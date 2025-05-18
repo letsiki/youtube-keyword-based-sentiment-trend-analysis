@@ -7,4 +7,6 @@ Planning for the upcoming BBD  project
  
 - TODO:
   - (AA) Play around with free telescope API's
-  - (AK) Contact A. Ritas for advice    
+  - (AK) Contact A. Ritas for advice
+  - (all) study Louloudis' [project](https://github.com/user-al-kol),
+    particularly the 'tools and technologies used' section
