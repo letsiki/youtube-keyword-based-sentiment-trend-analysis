@@ -1,0 +1,18 @@
+Case 1
+
+	Dear Sebastien,
+
+	I am connecting as I am interested in exploring data engineer opportunities at O2DO.
+
+	Best regards
+
+	Alexandros
+
+Case 2
+	Dear Renaud,
+
+	I’m an electronic engineer currently shifting into data engineering. I’m reaching out to connect as I’m exploring opportunities in the field         in Belgium.
+
+	Best,
+
+	Alexander
