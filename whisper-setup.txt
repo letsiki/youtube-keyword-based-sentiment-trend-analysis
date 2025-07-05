@@ -1,0 +1,28 @@
+
+1. Ενημέρωσε το σύστημα
+
+sudo apt update && sudo apt upgrade -y
+
+2.Εγκατέστησε Python & pip
+
+sudo apt install python3 python3-pip -y
+
+3. Εγκατέστησε το ffmpeg
+
+sudo apt install ffmpeg -y
+
+4. Εναλλακτικά: Χρησιμοποίησε ένα Virtual Environment (καλύτερη πρακτική)
+ 
+python3 -m venv whisper-env
+
+source whisper-env/bin/activate
+
+5. Εγκατάσταση του Whisper
+
+pip install git+https://github.com/openai/whisper.git
+
+6. Τρέξε το whisper
+
+Παράδειγμα: whisper audio.mp3 --language French --model medium --task transcribe
+
+
