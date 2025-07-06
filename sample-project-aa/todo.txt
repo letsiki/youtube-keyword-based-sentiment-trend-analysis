@@ -1,0 +1,36 @@
+Part A
+Build scraper
+Search and extract playlists
+use template
+https://www.youtube.com/results?search_query={keywords-go-here}&sp=EgIQAw%253D%253D
+use urlib.parse.quote('keywords-go-here) to handle spaces
+pick the top 10 or something, xcom a list of urls
+
+Part B
+# Cleanwich
+def split_chunks(data, n_chunks):
+    from math import ceil
+    avg = ceil(len(data) / n_chunks)
+    return [data[i * avg : (i + 1) * avg] for i in range(n_chunks)]
+or my version
+
+Part C
+get the result of Part B into a variable. 
+create a group of tasks. the first one in branch(url)
+loop n=4 times and create the groups
+
+Part D
+build the individual pieces of the group and group them
+group blueprint:
+
+    branch into leaf A 
+                    -> download mp3's pass filepaths via xcom 
+                    -> convert to text file pass .txt filepath via xcom
+                    -> load into pg table1 (id url, text file contents)
+            and leaf B 
+                    -> selenium get contents (html) save to html pass html filepath via xcom 
+                    -> bs4 parse html files store to json pass json path via xcom 
+                    -> load into pg table2 (id url, json file contents as BJSON)
+
+Part E
+Decide what is considered an error and what should happen in case of one
