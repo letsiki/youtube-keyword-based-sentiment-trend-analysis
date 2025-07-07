@@ -20,6 +20,7 @@ create a group of tasks. the first one in branch(url)
 loop n=4 times and create the groups
 
 Part D
+option a:
 build the individual pieces of the group and group them
 group blueprint:
 
@@ -32,5 +33,42 @@ group blueprint:
                     -> bs4 parse html files store to json pass json path via xcom 
                     -> load into pg table2 (id url, json file contents as BJSON)
 
+option b:
+like option a, but use the mapped task syntax instead of groups (see Extras below)
+
 Part E
 Decide what is considered an error and what should happen in case of one
+
+
+Extras:
+
+A. Checkout this syntax for mapped tasks
+
+assume the following tasks:
+
+@task
+def scrape(url):
+    html = selenium_scrape(url)
+    path = f"/tmp/scrapes/{hash(url)}.html"
+    with open(path, "w") as f:
+        f.write(html)
+    return path
+
+@task
+def parse(path):
+    with open(path) as f:
+        html = f.read()
+    comments = extract_comments(html)
+    save_to_pg(comments)
+
+you can use this for generating them based on the len of the return of get_urls()
+
+get_urls() >> scrape.expand(url=get_urls()) >> parse.expand(path=scrape.output)
+
+In the dag they will appear as one but with a drop menu
+
+B. In the docker operator, you may use the 'python main.py' as entrypoint, and leave the 
+command empty for potential arguments like debug. 
+For container inspection you may use docker run -it --entrypoint bash my_image.
+With this setup we can configure a manual run that passes the debug variable, that will end
+up overriding the cmd and scrape very few urls instead of a regular run (command kwarg in docker operator)
