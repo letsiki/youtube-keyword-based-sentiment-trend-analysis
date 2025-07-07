@@ -1,3 +1,9 @@
 *.mp3
 *.webm*
 *.vscode*
+/airflow/dags/astro*
+/airflow/dags/day*
+/airflow/dags/gpt*
+/airflow/dags/.gitignore
+__pycache__
+/airflow/logs/*
