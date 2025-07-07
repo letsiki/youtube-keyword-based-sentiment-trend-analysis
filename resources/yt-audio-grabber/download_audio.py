@@ -13,7 +13,7 @@ url = "https://www.youtube.com/watch?list=PLpTHjAucqq9A2IDIsR8Ftbg7U6bKCMrcr"
 
 ydl_opts = {
     "format": "251",
-    "outtmpl": "downloads/160/%(title)s.%(ext)s",
+    "outtmpl": "/app/downloads/160/%(title)s.%(ext)s",
     "ignoreerrors": True,
     "playliststart": 1,
     "postprocessors": [
@@ -35,7 +35,7 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         [url],
     )
     br160_time = round(perf_counter() - start, 2)
-ydl.extract_info(url)
+ydl.extract_info(url, download=False)
 print(ydl._playlist_urls)
 
 

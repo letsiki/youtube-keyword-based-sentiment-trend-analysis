@@ -1,1 +1,1 @@
-docker run --rm -v "$PWD/downloads:/app/downloads" ytaudiograbber:latest
+docker run --rm -v "$PWD/resources/yt-audio-grabber/downloads:/app/downloads" ytaudiograbber:latest --debug
