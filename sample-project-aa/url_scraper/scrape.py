@@ -1,7 +1,8 @@
 import os
-import logging
 from urllib.parse import quote, urlparse, parse_qs
 import time
+import json
+import argparse
 
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
@@ -13,16 +14,6 @@ from selenium.common.exceptions import TimeoutException
 
 start = time.perf_counter()
 
-# Setup logging
-logger = logging.getLogger("youtube_scraper")
-logger.setLevel(logging.INFO)
-ch = logging.StreamHandler()
-formatter = logging.Formatter(
-    "[%(asctime)s] %(levelname)s: %(message)s"
-)
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-
 # Config
 QUERY_KEYWORDS = ["CNN Israel", "BBC Israel"]
 N_RESULTS_PER_QUERY = 3
@@ -32,6 +23,10 @@ FIREFOX_BINARY = os.getenv(
 )
 SEARCH_URL_TEMPLATE = "https://www.youtube.com/results?search_query={}&sp=EgIQAw%253D%253D"
 WAIT_TIME = 15
+
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument("--debug", action="store_true")
+args = arg_parser.parse_args()
 
 
 def scrape():
@@ -72,6 +67,9 @@ def scrape():
                 if a.get_attribute("href")
             ]
 
+            if args.debug:
+                playlist_urls = playlist_urls[-1:]
+
             for i, playlist_url in enumerate(playlist_urls):
                 parsed = urlparse(playlist_url)
                 playlist_id = parse_qs(parsed.query).get(
@@ -82,9 +80,7 @@ def scrape():
                     continue
 
                 external_playlist_url = f"https://www.youtube.com/playlist?list={playlist_id}"
-                logger.info(
-                    f"Opening playlist: {external_playlist_url}"
-                )
+                print(f"Opening playlist: {external_playlist_url}")
                 driver.get(external_playlist_url)
 
                 # For the first iteration only
@@ -161,7 +157,7 @@ def scrape():
                     for a in video_links
                     if a.get_attribute("href")
                 ]
-                logger.info(f"Found {len(urls)} video URLs.")
+                print(f"Found {len(urls)} video URLs.")
 
                 for link in video_links:
                     href = link.get_attribute("href")
@@ -172,21 +168,20 @@ def scrape():
                         if video_id:
                             all_video_ids.add(video_id)
 
-                logger.info(
+                print(
                     f"Collected {len(all_video_ids)} unique video IDs so far."
                 )
     finally:
         driver.quit()
 
-    # # test locally
-    # with open("video_id.txt", "w") as f:
-    #     for video_id in all_video_ids:
-    #         f.write(video_id + "\n")
+    os.makedirs("/airflow/xcom", exist_ok=True)
+    with open("/airflow/xcom/return.pkl", "wb") as f:
+        import pickle
+        pickle.dump(list(all_video_ids), f)
 
-    logger.info(
+    print(
         f"Scraping took {round((time.perf_counter() - start), 2)} seconds"
     )
-    return all_video_ids
 
 
 if __name__ == "__main__":
