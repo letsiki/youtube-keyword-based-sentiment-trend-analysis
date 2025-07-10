@@ -16,7 +16,7 @@ with DAG(
     start_date=datetime(2025, 6, 28),
     schedule="8 9,15 * * *",
     catchup=False,
-    tags=["bblue"],
+    tags=["bblue-project"],
 ) as dag:
 
     # --- DockerOperator Task
