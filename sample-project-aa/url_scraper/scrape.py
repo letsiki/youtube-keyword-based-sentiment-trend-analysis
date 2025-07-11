@@ -174,9 +174,12 @@ def scrape():
     finally:
         driver.quit()
 
+    if args.debug:
+        all_video_ids = set(list(all_video_ids)[:52])
     os.makedirs("/airflow/xcom", exist_ok=True)
     with open("/airflow/xcom/return.pkl", "wb") as f:
         import pickle
+
         pickle.dump(list(all_video_ids), f)
 
     print(
