@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 from math import ceil
 from airflow.decorators import task, task_group
 from docker.types import Mount
@@ -7,6 +8,7 @@ from datetime import datetime
 from airflow.providers.discord.operators.discord_webhook import (
     DiscordWebhookOperator,
 )
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.utils.trigger_rule import TriggerRule
@@ -23,6 +25,15 @@ with DAG(
 ) as dag:
 
     # ---TASK DEFINITION---
+
+    @task
+    def create_tables_if_not_exist():
+        sql_path = (
+            Path(__file__).parent.parent / "include" / "create_tables.sql"
+        )
+        sql = sql_path.read_text()
+        hook = PostgresHook(postgres_conn_id="my_postgres_conn")
+        hook.run(sql)
 
     @task
     def create_chunks_out_of_urls(n_chunks, **context):
@@ -153,6 +164,7 @@ with DAG(
 
     (
         start_pg
+        >> create_tables_if_not_exist()
         >> scraper_task
         >> chunkify_task
         >> mapped_groups
