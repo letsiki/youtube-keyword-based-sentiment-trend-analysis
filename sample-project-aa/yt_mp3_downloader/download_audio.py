@@ -2,6 +2,7 @@ import yt_dlp
 from time import perf_counter
 import argparse
 import os
+import pickle
 
 parser = argparse.ArgumentParser()
 # parser.add_argument("--debug", action="store_true")
@@ -20,7 +21,6 @@ ydl_opts = {
     "format": "251",
     "outtmpl": "/app/downloads/160/%(id)s.%(ext)s",
     "ignoreerrors": True,
-    # "playliststart": 1,
     "postprocessors": [
         {
             "key": "FFmpegExtractAudio",
@@ -29,9 +29,6 @@ ydl_opts = {
         }
     ],
 }
-
-# if args.debug:
-#     ydl_opts["playlistend"] = 5
 
 
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -49,6 +46,4 @@ print(f"processed 52 songs 160kbps audios in {br160_time} seconds.")
 
 os.makedirs("/airflow/xcom", exist_ok=True)
 with open("/airflow/xcom/return.pkl", "wb") as f:
-    import pickle
-
     pickle.dump(list(urls), f)
