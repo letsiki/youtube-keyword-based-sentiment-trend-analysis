@@ -1,0 +1,7 @@
+Build image: docker build -t whisper-service .
+
+Create bind mount: 
+docker run --rm \
+  -v $(pwd)/your_audio.mp3:/app/audio.mp3 \
+  -v $(pwd):/app \
+  whisper-service
