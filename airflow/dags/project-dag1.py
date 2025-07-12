@@ -15,6 +15,116 @@ from airflow.utils.trigger_rule import TriggerRule
 from airflow.exceptions import AirflowException
 from airflow.models.xcom_arg import XComArg
 
+
+# -----------------------------DEFINE TASKS-----------------------------
+
+
+@task
+def create_tables_if_not_exist():
+    sql_path = (
+        Path(__file__).parent.parent / "include" / "create_tables.sql"
+    )
+    sql = sql_path.read_text()
+    hook = PostgresHook(postgres_conn_id="my_postgres_conn")
+    hook.run(sql)
+
+
+@task
+def create_chunks_out_of_urls(n_chunks, **context):
+    """
+    split urls into chunks, to facilitate parallel processing
+    prefix video_ids with 'v' for bash compatibility
+    """
+
+    url_list = context["ti"].xcom_pull(task_ids="scraper_task")
+    avg = ceil(len(url_list) / n_chunks)
+    chunked_urls = [
+        ["v" + u for u in url_list][i * avg : (i + 1) * avg]
+        for i in range(n_chunks)
+    ]
+    for chunk in chunked_urls:
+        print(chunk)
+    return chunked_urls
+
+
+@task
+def entry(u):
+    """Entry point to the upper branch"""
+    return u
+
+
+@task
+def print_urls(**context):
+    print(
+        context["ti"].xcom_pull(
+            task_ids="distributed_node.upper_branch.mp3_getter_task"
+        )
+    )
+
+
+@task
+def print_twice(**context):
+    u = context["ti"].xcom_pull(
+        task_ids="distributed_node.lower_branch.entry"
+    )
+    print([2 * url[1:] for url in u])
+
+
+# -----------------------------DEFINE GROUPS----------------------------
+
+
+@task_group
+def upper_branch(urls):
+    """
+    Upper branch is responsible to for audio-text conversion and
+    storing into a pg database
+    """
+
+    mp3_getter_task = DockerOperator(
+        task_id="mp3_getter_task",
+        image="mp3-getter:latest",
+        auto_remove="force",
+        tty=True,
+        mount_tmp_dir=False,
+        docker_url="unix://var/run/docker.sock",
+        do_xcom_push=True,
+        command="--urls {{ ti.xcom_pull(task_ids='distributed_node.upper_branch.entry') | join(' ') }}",
+        retrieve_output=True,
+        retrieve_output_path="/airflow/xcom/return.pkl",
+        mounts=[
+            Mount(
+                source="/home/alex/Projects/bbd_project/sample-project-aa/mp3",
+                target="/app/downloads/160",
+                type="bind",
+            )
+        ],
+    )
+
+    (entry(urls) >> mp3_getter_task >> print_urls())
+
+
+@task_group
+def lower_branch(urls):
+    """
+    lower branch is responsible for scraping comments and
+    storing them into a pg database.
+    """
+
+    entry(urls) >> print_twice()
+
+
+@task_group
+def distributed_node(urls):
+    """
+    Container group of upper_branch and lower_branch groups.
+    """
+
+    upper_branch(urls)
+    lower_branch(urls)
+
+
+# -----------------------------CREATE DAG-------------------------------
+
 with DAG(
     dag_id="project-dag1",
     start_date=datetime(2025, 6, 28),
@@ -23,105 +133,6 @@ with DAG(
     catchup=False,
     tags=["bblue-project"],
 ) as dag:
-
-    # ---TASK DEFINITION---
-
-    @task
-    def create_tables_if_not_exist():
-        sql_path = (
-            Path(__file__).parent.parent / "include" / "create_tables.sql"
-        )
-        sql = sql_path.read_text()
-        hook = PostgresHook(postgres_conn_id="my_postgres_conn")
-        hook.run(sql)
-
-    @task
-    def create_chunks_out_of_urls(n_chunks, **context):
-        """
-        split urls into chunks, to facilitate parallel processing
-        prefix video_ids with 'v' for bash compatibility
-        """
-
-        url_list = context["ti"].xcom_pull(task_ids="scraper_task")
-        avg = ceil(len(url_list) / n_chunks)
-        chunked_urls = [
-            ["v" + u for u in url_list][i * avg : (i + 1) * avg]
-            for i in range(n_chunks)
-        ]
-        for chunk in chunked_urls:
-            print(chunk)
-        return chunked_urls
-
-    @task_group
-    def upper_branch(urls):
-        """
-        Upper branch is responsible to for audio-text conversion and
-        storing into a pg database
-        """
-
-        # ---TASK DEFINITION---
-
-        @task
-        def entry(u):
-            return u
-
-        @task
-        def print_urls(**context):
-            print(
-                context["ti"].xcom_pull(
-                    task_ids="distributed_node.upper_branch.mp3_getter_task"
-                )
-            )
-
-        # ---TASK CREATION---
-
-        mp3_getter_task = DockerOperator(
-            task_id="mp3_getter_task",
-            image="mp3-getter:latest",
-            auto_remove="force",
-            tty=True,
-            mount_tmp_dir=False,
-            docker_url="unix://var/run/docker.sock",
-            do_xcom_push=True,
-            command="--urls {{ ti.xcom_pull(task_ids='distributed_node.upper_branch.entry')}}",
-            retrieve_output=True,
-            retrieve_output_path="/airflow/xcom/return.pkl",
-            mounts=[
-                Mount(
-                    source="/home/alex/Projects/bbd_project/sample-project-aa/mp3",
-                    target="/app/downloads/160",
-                    type="bind",
-                )
-            ],
-        )
-
-        (entry(urls) >> mp3_getter_task >> print_urls())
-
-    @task_group
-    def lower_branch(urls):
-        """
-        lower branch is responsible for scraping comments and
-        storing them into a pg database.
-        """
-
-        @task
-        def print_twice(u):
-            print([2 * url for url in u])
-
-        print_twice(urls)
-
-    @task_group
-    def distributed_node(urls):
-        """
-        Container group of upper_branch and lower_branch groups.
-        """
-
-        # ---TASK CREATION---
-
-        upper_branch(urls)
-        lower_branch(urls)
-
-    # ---TASK CREATION---
 
     # removes leftovers and creates a pg instance mounting it to postgres_volume_project
     start_pg = BashOperator(
