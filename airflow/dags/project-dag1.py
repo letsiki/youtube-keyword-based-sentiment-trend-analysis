@@ -41,7 +41,7 @@ def create_chunks_out_of_urls(n_chunks, **context):
     prefix video_ids with 'v' for bash compatibility
     """
 
-    url_list = context["ti"].xcom_pull(task_ids="tg1.scraper_task")
+    url_list = context["ti"].xcom_pull(task_ids="scraping.scraper_task")
     avg = ceil(len(url_list) / n_chunks)
     chunked_urls = [
         [u for u in url_list][i * avg : (i + 1) * avg]
@@ -58,16 +58,36 @@ def entry(u):
     return u
 
 
-@task
-def print_urls(**context):
-    u = context["ti"].xcom_pull(task_ids="distributed_node.entry")
-    print([url[1:] for url in u])
+# @task
+# def print_urls(**context):
+#     u = context["ti"].xcom_pull(task_ids="distributed_node.entry")
+#     print([url[1:] for url in u])
+
+
+# @task
+# def print_twice(**context):
+#     u = context["ti"].xcom_pull(task_ids="distributed_node.entry")
+#     print([2 * url[1:] for url in u])
 
 
 @task
-def print_twice(**context):
-    u = context["ti"].xcom_pull(task_ids="distributed_node.entry")
-    print([2 * url[1:] for url in u])
+def comments_to_db(**context):
+    pass
+
+
+@task
+def fetch_comments(**context):
+    pass
+
+
+@task
+def text_to_db(**context):
+    pass
+
+
+@task
+def spark_operator_join_and_transform_to_sentiment(**context):
+    pass
 
 
 @task(trigger_rule=TriggerRule.ONE_FAILED, retries=0)
@@ -78,7 +98,7 @@ def watcher():
 
 
 def file_count_check(ti: TaskInstance, folder_path: str) -> bool:
-    min_files = len(ti.xcom_pull(task_ids="tg1.scraper_task"))
+    min_files = len(ti.xcom_pull(task_ids="scraping.scraper_task"))
     file_count = len(
         [
             f
@@ -93,7 +113,7 @@ def file_count_check(ti: TaskInstance, folder_path: str) -> bool:
 
 
 @task_group
-def upper_branch(urls):
+def mp3_fetching(urls):
     """
     Upper branch is responsible to for audio-text conversion and
     storing into a pg database
@@ -125,19 +145,19 @@ def upper_branch(urls):
         # >>
         mp3_getter_task
         # >> audio_transcriber_task
-        >> print_urls()
+        # >> print_urls()
     )
 
 
 @task_group
-def lower_branch(urls):
+def comment_fetching(urls):
     """
     lower branch is responsible for scraping comments and
     storing them into a pg database.
     """
 
     # entry(urls) >>
-    print_twice()
+    fetch_comments() >> comments_to_db()
 
 
 @task_group
@@ -146,13 +166,13 @@ def distributed_node(urls):
     Container group of upper_branch and lower_branch groups.
     """
 
-    entry(urls) >> [upper_branch(urls), lower_branch(urls)]
+    entry(urls) >> [mp3_fetching(urls), comment_fetching(urls)]
     # upper_branch(urls)
     # lower_branch(urls)
 
 
 @task_group
-def tg1():
+def scraping():
     # creates a pg instance mounting it to postgres_volume_project
     start_pg = BashOperator(
         task_id="start_pg",
@@ -190,7 +210,7 @@ def tg1():
 
 
 @task_group
-def tg2():
+def audio_to_text():
     wait_for_files = PythonSensor(
         task_id="wait_for_files",
         python_callable=file_count_check,
@@ -208,7 +228,7 @@ def tg2():
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
         # do_xcom_push=True,
-        command="--model tiny --urls {{ ti.xcom_pull(task_ids='tg1.scraper_task') | join(' ') }}",
+        command="--model tiny --urls {{ ti.xcom_pull(task_ids='scraping.scraper_task') | join(' ') }}",
         # retrieve_output=True,
         # retrieve_output_path="/airflow/xcom/return.pkl",
         container_name="whisper_container",
@@ -226,7 +246,7 @@ def tg2():
         ],
     )
 
-    wait_for_files >> audio_transcriber_task
+    wait_for_files >> audio_transcriber_task >> text_to_db()
 
 
 # -----------------------------CREATE DAG-------------------------------
@@ -248,19 +268,27 @@ with DAG(
 
     chunkify_task = create_chunks_out_of_urls(4)
 
+    spark_job = spark_operator_join_and_transform_to_sentiment()
+
     mapped_groups = distributed_node.expand(urls=chunkify_task)
 
-    tg1_group = tg1()
-    tg2_group = tg2()
+    scraping_group = scraping()
+    audio_to_text_group = audio_to_text()
 
     (
-        tg1_group
+        scraping_group
         >> chunkify_task
         >> Label("Expand")
         >> mapped_groups
+        >> spark_job
         >> cleanup_pg.as_teardown()
     )
 
-    tg1_group >> tg2_group >> cleanup_pg.as_teardown()
+    (
+        scraping_group
+        >> audio_to_text_group
+        >> spark_job
+        >> cleanup_pg.as_teardown()
+    )
 
-    [tg2_group, mapped_groups] >> watcher()
+    spark_job >> watcher()
