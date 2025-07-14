@@ -1,0 +1,11 @@
+Image:
+docker build --network=host --no-cache -t comment-scraper-2 .
+
+Container:
+docker run --network=host -d --name comment-scraper-app-2 -v $(pwd)/output:/app/output comment-scraper-2
+
+docker run -v $(pwd)/output:/app/output comment-scraper-2 "https://www.youtube.com/watch?v=FIRST_VIDEO_ID" "https://www.youtube.com/watch?v=SECOND_VIDEO_ID" ...
+
+Result:
+The jsons are in a output/ directory
+that's why I'm using the bind mount above. 
