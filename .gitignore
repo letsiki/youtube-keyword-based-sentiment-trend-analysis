@@ -1,9 +1,11 @@
 *.mp3
 *.webm*
 *.vscode*
-/airflow/dags/astro*
-/airflow/dags/day*
-/airflow/dags/gpt*
-/airflow/dags/.gitignore
+/airflow/dags/astro
+/airflow/dags/bblue_exercises
+/airflow/dags/gpt-practice
+/airflow/dags/practice
+/airflow/dags/.airflowignore
 __pycache__
 /airflow/logs/*
+sample-project-aa/text

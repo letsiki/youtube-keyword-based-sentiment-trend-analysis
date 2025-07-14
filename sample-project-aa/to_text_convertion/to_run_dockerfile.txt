@@ -1,0 +1,18 @@
+Build image: docker build -t whisper-service .
+
+Create bind mount: 
+docker run --rm \
+  -v $(pwd)/your_audio.mp3:/app/audio.mp3 \
+  -v $(pwd):/app \
+  whisper-service
+
+# Μου έτρεξε μόνο με --network=host
+Build image: docker build --network=host -t whisper-microservice . 
+
+Run: docker run --rm whisper-microservice audio.mp3 --lang fr --model small
+
+Μου έτρεξε μόνο με docker run --network=host --name whisper-test whisper-microservice 'audio.mp3'
+
+docker cp whisper-test:/app/'file1.txt' .
+docker cp whisper-test:/app/'file2.txt' .
+docker rm whisper-test

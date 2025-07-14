@@ -19,7 +19,7 @@ urls = [url[1:] for url in args.urls]
 
 ydl_opts = {
     "format": "251",
-    "outtmpl": "/app/downloads/160/%(id)s.%(ext)s",
+    "outtmpl": "/app/mp3/%(id)s.%(ext)s",
     "ignoreerrors": True,
     "postprocessors": [
         {
@@ -42,8 +42,10 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
 # print(ydl._playlist_urls)
 
 
-print(f"processed 52 songs 160kbps audios in {br160_time} seconds.")
+print(
+    f"processed {len(urls)} songs 160kbps audios in {br160_time} seconds."
+)
 
-os.makedirs("/airflow/xcom", exist_ok=True)
-with open("/airflow/xcom/return.pkl", "wb") as f:
-    pickle.dump(list(urls), f)
+# os.makedirs("/airflow/xcom", exist_ok=True)
+# with open("/airflow/xcom/return.pkl", "wb") as f:
+#     pickle.dump(["v" + url for url in urls], f)
