@@ -26,6 +26,7 @@ import os
 
 @task
 def create_tables_if_not_exist():
+    """runs airflow/include/create_tables.sql on the pg database"""
     sql_path = (
         Path(__file__).parent.parent / "include" / "create_tables.sql"
     )
@@ -38,7 +39,6 @@ def create_tables_if_not_exist():
 def create_chunks_out_of_urls(n_chunks, **context):
     """
     split urls into chunks, to facilitate parallel processing
-    prefix video_ids with 'v' for bash compatibility
     """
 
     url_list = context["ti"].xcom_pull(task_ids="scraping.scraper_task")
@@ -56,18 +56,6 @@ def create_chunks_out_of_urls(n_chunks, **context):
 def entry(u):
     """Entry point to distributed node"""
     return u
-
-
-# @task
-# def print_urls(**context):
-#     u = context["ti"].xcom_pull(task_ids="distributed_node.entry")
-#     print([url[1:] for url in u])
-
-
-# @task
-# def print_twice(**context):
-#     u = context["ti"].xcom_pull(task_ids="distributed_node.entry")
-#     print([2 * url[1:] for url in u])
 
 
 @task
@@ -92,13 +80,20 @@ def spark_operator_join_and_transform_to_sentiment(**context):
 
 @task(trigger_rule=TriggerRule.ONE_FAILED, retries=0)
 def watcher():
+    """task that ensures that the dag run has failed whenever any of the tasks has failed"""
     raise AirflowException(
         "Failing task because one or more upstream tasks failed."
     )
 
 
 def file_count_check(ti: TaskInstance, folder_path: str) -> bool:
-    min_files = len(ti.xcom_pull(task_ids="scraping.scraper_task"))
+    """
+    function used by wait_for_files PythonSensor to ensure that mp3 files
+    are there prior to transcribing them.
+    """
+    target_files_nr = len(
+        ti.xcom_pull(task_ids="scraping.scraper_task")
+    )
     file_count = len(
         [
             f
@@ -106,7 +101,7 @@ def file_count_check(ti: TaskInstance, folder_path: str) -> bool:
             if os.path.isfile(os.path.join(folder_path, f))
         ]
     )
-    return file_count == min_files
+    return file_count == target_files_nr
 
 
 # -----------------------------DEFINE GROUPS----------------------------
@@ -115,7 +110,7 @@ def file_count_check(ti: TaskInstance, folder_path: str) -> bool:
 @task_group
 def mp3_fetching(urls):
     """
-    Upper branch is responsible to for audio-text conversion and
+    mp3_fetching is responsible to for audio-text conversion and
     storing into a pg database
     """
 
@@ -127,10 +122,7 @@ def mp3_fetching(urls):
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
         container_name="mp3_getter_{{ ti.map_index }}",
-        # do_xcom_push=True,
         command="--urls {{ ti.xcom_pull(task_ids='distributed_node.entry') | join(' ') }}",
-        # retrieve_output=True,
-        # retrieve_output_path="/airflow/xcom/return.pkl",
         mounts=[
             Mount(
                 source="/home/alex/Projects/bbd_project/sample-project-aa/mp3",
@@ -140,39 +132,35 @@ def mp3_fetching(urls):
         ],
     )
 
-    (
-        # entry(urls)
-        # >>
-        mp3_getter_task
-        # >> audio_transcriber_task
-        # >> print_urls()
-    )
+    mp3_getter_task
 
 
 @task_group
 def comment_fetching(urls):
     """
-    lower branch is responsible for scraping comments and
+    comment_fetching is responsible for scraping comments and
     storing them into a pg database.
     """
 
-    # entry(urls) >>
     fetch_comments() >> comments_to_db()
 
 
 @task_group
 def distributed_node(urls):
     """
-    Container group of upper_branch and lower_branch groups.
+    Container group for mp3_fetching and comment_fetching_group.
+    Meant to be mapped into multiple instances to be executed in parallel.
     """
 
     entry(urls) >> [mp3_fetching(urls), comment_fetching(urls)]
-    # upper_branch(urls)
-    # lower_branch(urls)
 
 
 @task_group
 def scraping():
+    """
+    Group responsible for initiating a pg container, create tables if necessary
+    and fetch all relevant urls (video id's) through scraping.
+    """
     # creates a pg instance mounting it to postgres_volume_project
     start_pg = BashOperator(
         task_id="start_pg",
@@ -211,6 +199,14 @@ def scraping():
 
 @task_group
 def audio_to_text():
+    """
+    Group responsible for converting audio from youtube sources into text
+    using openAI's whisper model.
+    Stores results to pg database
+    Depends indirectly (through a sensor) on task group mp3_fetching
+    All mp3's must be gathered prior to processing.
+    """
+
     wait_for_files = PythonSensor(
         task_id="wait_for_files",
         python_callable=file_count_check,
@@ -227,10 +223,7 @@ def audio_to_text():
         tty=True,
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
-        # do_xcom_push=True,
         command="--model tiny --urls {{ ti.xcom_pull(task_ids='scraping.scraper_task') | join(' ') }}",
-        # retrieve_output=True,
-        # retrieve_output_path="/airflow/xcom/return.pkl",
         container_name="whisper_container",
         mounts=[
             Mount(
@@ -260,7 +253,7 @@ with DAG(
     tags=["bblue-project"],
 ) as dag:
 
-    # removes the pg docker container (volume is kept)
+    # removes all containers (volumes are kept)
     cleanup_pg = BashOperator(
         task_id="cleanup_pg",
         bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /mp3/*",
