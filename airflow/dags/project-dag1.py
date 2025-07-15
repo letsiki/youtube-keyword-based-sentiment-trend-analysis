@@ -119,9 +119,7 @@ def text_to_db(**context):
 
 @task
 def spark_operator_join_and_transform_to_sentiment(**context):
-    import time
-
-    time.sleep(30)
+    pass
 
 
 @task(trigger_rule=TriggerRule.ONE_FAILED, retries=0)
@@ -313,8 +311,8 @@ def audio_to_text():
 with DAG(
     dag_id="project-dag1",
     start_date=datetime(2025, 6, 28),
-    # schedule="8 9,15 * * *",
-    schedule=None,
+    schedule="5,35 * * * *",
+    # schedule=None,
     catchup=False,
     tags=["bblue-project"],
 ) as dag:
