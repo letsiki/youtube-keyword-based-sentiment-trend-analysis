@@ -181,7 +181,7 @@ def mp3_fetching(urls):
     mp3_getter_task = DockerOperator(
         task_id="mp3_getter_task",
         image="mp3-getter:latest",
-        auto_remove="force",
+        auto_remove="never",
         tty=True,
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
@@ -192,7 +192,12 @@ def mp3_fetching(urls):
                 source="/home/alex/Projects/bbd_project/sample-project-aa/mp3",
                 target="/app/mp3",
                 type="bind",
-            )
+            ),
+            Mount(
+                source="/home/alex/Projects/bbd_project/sample-project-aa/json/video",
+                target="/app/json/video",
+                type="bind",
+            ),
         ],
     )
 
@@ -243,7 +248,7 @@ def scraping():
     scraper_task = DockerOperator(
         task_id="scraper_task",
         image="url-scraper:latest",
-        auto_remove="force",
+        auto_remove="never",
         tty=True,
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
@@ -283,7 +288,7 @@ def audio_to_text():
     audio_transcriber_task = DockerOperator(
         task_id="audio_transcriber",
         image="transcribe-many:latest",
-        auto_remove="force",
+        auto_remove="never",
         tty=True,
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
@@ -320,7 +325,7 @@ with DAG(
     # removes all containers (volumes are kept)
     cleanup_pg = BashOperator(
         task_id="cleanup_pg",
-        bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/*",
+        bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/*",
     )
 
     chunkify_task = create_chunks_out_of_urls(8)

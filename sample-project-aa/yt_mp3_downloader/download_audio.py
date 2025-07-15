@@ -4,6 +4,7 @@ import argparse
 import os
 import pickle
 import pathlib
+import json
 
 parser = argparse.ArgumentParser()
 # parser.add_argument("--debug", action="store_true")
@@ -35,12 +36,20 @@ ydl_opts = {
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     start = perf_counter()
     for url in ["https://www.youtube.com/watch?v=" + u for u in urls]:
-        ydl.download(
-            url,
-        )
+        ydl.download(url)
+        info_dict = ydl.extract_info(url, download=False)
         br160_time = round(perf_counter() - start, 2)
-# ydl.extract_info(url, download=False)
-# print(ydl._playlist_urls)
+        if info_dict:
+            metadata = {
+                "title": info_dict.get("title", None),
+                "uploader": info_dict.get("uploader", None),
+                "upload_date": info_dict.get("upload_date", None),
+                "description": info_dict.get("description", None),
+                "view_count": info_dict.get("view_count", None),
+            }
+
+            with open(f"/app/json/video/{info_dict["id"]}.json", "w") as json_file:
+                json.dump(metadata, json_file)
 
 nr_files_extracted = len(list(pathlib.Path("/app/mp3").glob("*.mp3")))
 

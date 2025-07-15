@@ -86,6 +86,8 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/include:/opt/airflow/include
     - /home/alex/Projects/bbd_project/sample-project-aa/mp3:/opt/airflow/mp3
     - /home/alex/Projects/bbd_project/sample-project-aa/text:/opt/airflow/text
+    - /home/alex/Projects/bbd_project/sample-project-aa/json/comments:/opt/airflow/json/comments
+    - /home/alex/Projects/bbd_project/sample-project-aa/json/video:/opt/airflow/json/video
     - /var/run/docker.sock:/var/run/docker.sock
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
