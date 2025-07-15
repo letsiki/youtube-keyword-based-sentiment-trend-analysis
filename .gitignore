@@ -9,3 +9,4 @@
 __pycache__
 /airflow/logs/*
 sample-project-aa/text
+sample-project-aa/text.zip

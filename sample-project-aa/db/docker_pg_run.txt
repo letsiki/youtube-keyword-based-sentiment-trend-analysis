@@ -1,2 +1,1 @@
-docker run --rm -it  --name airflow_pg_temp -e POSTGRES_USER=airflow -e POSTGRES_PASSWORD=airflow -e POSTGRES_DB=project_data -v postgres_
-volume_project:/var/lib/postgresql/data -p 5433:5432 postgres:15
+docker run --rm -it  --name airflow_pg_temp -e POSTGRES_USER=airflow -e POSTGRES_PASSWORD=airflow -e POSTGRES_DB=project_data -v postgres_volume_project:/var/lib/postgresql/data -p 5433:5432 postgres:15

@@ -16,6 +16,11 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "--urls", nargs="+", help="Λίστα από αρχεία ήχου για επεξεργασία"
 )
+
+parser.add_argument(
+    "--exclude", nargs="*", help="Λίστα από αρχεία ήχου για εξαίρεση"
+)
+
 # ISO code π.χ. el, en, fr, de, it
 parser.add_argument(
     "--lang", default="en", help="Γλώσσα εισόδου (ISO code)"
@@ -42,35 +47,49 @@ text_path = base_path / "text"
 print(f"Φόρτωση μοντέλου Whisper ({args.model})...")
 model = whisper.load_model(args.model)
 
-# convert video_ids to mp3's
-audio_paths = [
-    mp3_path / (video_id[1:] + ".mp3") for video_id in args.urls
-]
 
+print(
+    f"found {len(args.exclude)} videos in the database and they will be excluded"
+)
+processed = set()
 
-# Επεξεργασία πολλών αρχείων
-for audio_path in audio_paths:
-    if not os.path.exists(audio_path):
-        print(f"To αρχείο {audio_path} δεν βρέθηκε. Παράλειψη.")
-        continue
+while True:
 
-    print(f"Επεξεργασία: {audio_path}")
-    result = model.transcribe(
-        str(audio_path),
-        language=args.lang,
-        task="transcribe",
-        fp16=False,  # "translate" if translate_to_english else "transcribe",
-    )
+    audio_paths = [
+        mp3_path / (video_id[1:] + ".mp3")
+        for video_id in args.urls
+        if video_id not in args.exclude and video_id not in processed
+    ]
 
-    # Δημιουργία output filename
-    base_name = os.path.splitext(os.path.basename(audio_path))[0]
-    output_file = f"{base_name}.txt"
+    if len(audio_paths) == 0:
+        print("No new files found, exiting")
+        break
 
-    with open(text_path / output_file, "w", encoding="utf-8") as f:
-        f.write(result["text"])
+    for audio_path in audio_paths:
+        video_id = "v" + audio_path.stem  # restore video_id
+        if not audio_path.exists():
+            print(f"To αρχείο {audio_path} δεν βρέθηκε. Παράλειψη.")
+            processed.add(video_id)
+            continue
 
-    print(f"Αποθηκεύτηκε: {output_file}")
+        print(f"Επεξεργασία: {audio_path}")
+        result = model.transcribe(
+            str(audio_path),
+            language=args.lang,
+            task="transcribe",
+            fp16=False,  # "translate" if translate_to_english else "transcribe",
+        )
 
+        # Δημιουργία output filename
+        base_name = os.path.splitext(os.path.basename(audio_path))[0]
+        output_file = f"{base_name}.txt"
+
+        with open(text_path / output_file, "w", encoding="utf-8") as f:
+            f.write(result["text"])
+
+        print(f"Αποθηκεύτηκε: {output_file}")
+
+        os.remove(audio_path)
 print("Ολοκληρώθηκε η απομαγνητοφώνηση/μετάφραση όλων των αρχείων.")
 
 # os.makedirs("/airflow/xcom", exist_ok=True)

@@ -3,6 +3,7 @@ from time import perf_counter
 import argparse
 import os
 import pickle
+import pathlib
 
 parser = argparse.ArgumentParser()
 # parser.add_argument("--debug", action="store_true")
@@ -41,11 +42,13 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
 # ydl.extract_info(url, download=False)
 # print(ydl._playlist_urls)
 
+nr_files_extracted = len(list(pathlib.Path("/app/mp3").glob("*.mp3")))
+
 
 print(
-    f"processed {len(urls)} songs 160kbps audios in {br160_time} seconds."
+    f"processed {nr_files_extracted} songs 160kbps audios in {br160_time} seconds."
 )
 
 # os.makedirs("/airflow/xcom", exist_ok=True)
 # with open("/airflow/xcom/return.pkl", "wb") as f:
-#     pickle.dump(["v" + url for url in urls], f)
+#     pickle.dump(nr_files_extracted, f)

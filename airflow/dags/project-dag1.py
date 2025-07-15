@@ -1,3 +1,5 @@
+from pathlib import Path
+import os
 from datetime import datetime
 from pathlib import Path
 from math import ceil
@@ -15,24 +17,35 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.utils.state import State
-from airflow.exceptions import AirflowException
+from airflow.exceptions import AirflowException, AirflowFailException
 from airflow.models.xcom_arg import XComArg
 from airflow.providers.standard.sensors.python import PythonSensor
 from airflow.models import TaskInstance
-import os
+
 
 # -----------------------------DEFINE TASKS-----------------------------
 
 
-@task
+@task()
 def create_tables_if_not_exist():
     """runs airflow/include/create_tables.sql on the pg database"""
     sql_path = (
         Path(__file__).parent.parent / "include" / "create_tables.sql"
     )
     sql = sql_path.read_text()
+
     hook = PostgresHook(postgres_conn_id="my_postgres_conn")
-    hook.run(sql)
+
+    with hook.get_conn() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(sql)
+    existing_texts = hook.get_first(
+        "SELECT array_agg(video_id) FROM text_from_audio;"
+    )
+    if None not in existing_texts:
+        return ["v" + ex for ex in existing_texts[0]]
+    else:
+        return []
 
 
 @task
@@ -70,12 +83,45 @@ def fetch_comments(**context):
 
 @task
 def text_to_db(**context):
-    pass
+    """
+    Connect to the db and write unique entries into the table
+    Skips conflicts
+    Deletes all txt files from the folder when done.
+    """
+
+    hook = PostgresHook("my_postgres_conn")
+
+    text_files = Path("/opt/airflow/text")
+
+    sql_path = (
+        Path(__file__).parent.parent / "include" / "insert_text.sql"
+    )
+    data = text_to_list(text_files)
+
+    sql = sql_path.read_text()
+
+    try:
+        with hook.get_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.executemany(sql, vars_list=data)
+            conn.commit()
+    except Exception as e:
+        print(f"[ERROR] DB insert failed: {e}")
+        raise AirflowFailException("Failed during batch insert")
+    finally:
+        # Always clean up
+        for file in text_files.glob("*.txt"):
+            try:
+                os.remove(file)
+            except Exception as e:
+                print(f"[WARN] Could not delete {file}: {e}")
 
 
 @task
 def spark_operator_join_and_transform_to_sentiment(**context):
-    pass
+    import time
+
+    time.sleep(30)
 
 
 @task(trigger_rule=TriggerRule.ONE_FAILED, retries=0)
@@ -86,14 +132,17 @@ def watcher():
     )
 
 
+# ------------------------DEFINE HELPER FUNCTIONS-----------------------
+
+
 def file_count_check(ti: TaskInstance, folder_path: str) -> bool:
     """
     function used by wait_for_files PythonSensor to ensure that mp3 files
     are there prior to transcribing them.
     """
-    target_files_nr = len(
-        ti.xcom_pull(task_ids="scraping.scraper_task")
-    )
+    # target_files_nr = len(
+    #     ti.xcom_pull(task_ids="distributed_node.mp3_fetching")
+    # )
     file_count = len(
         [
             f
@@ -101,7 +150,24 @@ def file_count_check(ti: TaskInstance, folder_path: str) -> bool:
             if os.path.isfile(os.path.join(folder_path, f))
         ]
     )
-    return file_count == target_files_nr
+    return file_count >= 4
+
+
+def text_to_list(path: Path | str) -> list[tuple]:
+    """
+    function that extracts all text files from a
+    directory into a list of tuples
+    format:
+      [(filename1, col1), (filename2, col2), ..., (filename, coln)]
+    """
+    if isinstance(path, str):
+        path = Path(path)
+    data = []
+    for txt in path.glob("*.txt"):
+        vid_id = txt.stem
+        vid_text = txt.read_text()
+        data.append((vid_id, vid_text))
+    return data
 
 
 # -----------------------------DEFINE GROUPS----------------------------
@@ -210,7 +276,7 @@ def audio_to_text():
     wait_for_files = PythonSensor(
         task_id="wait_for_files",
         python_callable=file_count_check,
-        op_kwargs={"folder_path": "/mp3"},
+        op_kwargs={"folder_path": "/opt/airflow/mp3"},
         poke_interval=5,
         timeout=600,
         mode="poke",
@@ -223,7 +289,7 @@ def audio_to_text():
         tty=True,
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
-        command="--model tiny --urls {{ ti.xcom_pull(task_ids='scraping.scraper_task') | join(' ') }}",
+        command="--model tiny --urls {{ ti.xcom_pull(task_ids='scraping.scraper_task') | join(' ') }} --exclude  {{ ti.xcom_pull(task_ids='scraping.create_tables_if_not_exist') | join(' ') }}",
         container_name="whisper_container",
         mounts=[
             Mount(
@@ -256,10 +322,10 @@ with DAG(
     # removes all containers (volumes are kept)
     cleanup_pg = BashOperator(
         task_id="cleanup_pg",
-        bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /mp3/*",
+        bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/*",
     )
 
-    chunkify_task = create_chunks_out_of_urls(4)
+    chunkify_task = create_chunks_out_of_urls(8)
 
     spark_job = spark_operator_join_and_transform_to_sentiment()
 

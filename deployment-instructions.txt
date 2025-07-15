@@ -8,3 +8,9 @@
 6. To do so use the command docker build -t <image_name> .
 7. now navigate to host:8080 and use u:airflow p:airflow
 8. trigger the dag called project-dag1
+
+extra:
+to access the database bring it up first by navigating to sample-project-aa/db and typing docker compose up
+to bring it down, do NOT do docker compose down, because this will bring down the external volume used by airflow
+unless this is the intended behavior.
+If that happens, airflow will not have access to it. Fix by restarting airflow.
