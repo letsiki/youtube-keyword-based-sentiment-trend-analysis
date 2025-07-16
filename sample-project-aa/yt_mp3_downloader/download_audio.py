@@ -32,25 +32,31 @@ ydl_opts = {
     ],
 }
 
-
+string_date = os.environ.get("LOGICAL_DATE")
+print(f"looking for videos in {string_date}")
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     start = perf_counter()
     for url in ["https://www.youtube.com/watch?v=" + u for u in urls]:
-        ydl.download(url)
+        
         info_dict = ydl.extract_info(url, download=False)
-        br160_time = round(perf_counter() - start, 2)
         if info_dict:
-            metadata = {
-                "title": info_dict.get("title", None),
-                "uploader": info_dict.get("uploader", None),
-                "upload_date": info_dict.get("upload_date", None),
-                "description": info_dict.get("description", None),
-                "view_count": info_dict.get("view_count", None),
-            }
+            video_date = info_dict.get("upload_date", None)
+            print(f"video date is {video_date}")
+            if video_date == string_date:
+                ydl.download(url)
+                metadata = {
+                    "title": info_dict.get("title", None),
+                    "uploader": info_dict.get("uploader", None),
+                    "upload_date": info_dict.get("upload_date", None),
+                    "description": info_dict.get("description", None),
+                    "view_count": info_dict.get("view_count", None),
+                }
 
-            with open(f"/app/json/video/{info_dict["id"]}.json", "w") as json_file:
-                json.dump(metadata, json_file)
-
+                with open(
+                    f"/app/json/video/{info_dict["id"]}.json", "w"
+                ) as json_file:
+                    json.dump(metadata, json_file)
+    br160_time = round(perf_counter() - start, 2)
 nr_files_extracted = len(list(pathlib.Path("/app/mp3").glob("*.mp3")))
 
 

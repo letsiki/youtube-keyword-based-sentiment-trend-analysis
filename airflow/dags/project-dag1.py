@@ -258,6 +258,7 @@ def mp3_fetching(urls):
         docker_url="unix://var/run/docker.sock",
         container_name="mp3_getter_{{ ti.map_index }}",
         command="--urls {{ ti.xcom_pull(task_ids='distributed_node.entry') | join(' ') }}",
+        environment={"LOGICAL_DATE": "{{ ds | replace('-', '') }}"},
         mounts=[
             Mount(
                 source="/home/alex/Projects/bbd_project/sample-project-aa/mp3",
@@ -391,8 +392,10 @@ def audio_to_text():
 with DAG(
     dag_id="project-dag1",
     start_date=datetime(2025, 6, 28),
-    schedule="0-59/7 * * * *",
+    # schedule="0-59/7 * * * *",
     # schedule=None,
+    schedule="42 14 * * * *",
+    max_active_runs=1,
     catchup=False,
     tags=["bblue-project"],
 ) as dag:
