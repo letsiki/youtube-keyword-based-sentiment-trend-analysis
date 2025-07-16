@@ -349,7 +349,8 @@ def audio_to_text():
         python_callable=file_count_check,
         op_kwargs={"folder_path": "/opt/airflow/mp3"},
         poke_interval=5,
-        timeout=600,
+        soft_fail=True,
+        timeout=300,
         mode="poke",
     )
 

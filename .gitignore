@@ -11,3 +11,4 @@ __pycache__
 sample-project-aa/text
 sample-project-aa/text.zip
 sample-project-aa/json
+sample-project-aa/apps/comment-scraper-2/output/*.json
