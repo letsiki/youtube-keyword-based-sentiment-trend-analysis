@@ -30,6 +30,10 @@ args = arg_parser.parse_args()
 
 
 def scrape():
+
+    if args.debug:
+        N_RESULTS_PER_QUERY = 1
+
     all_video_ids = set()
 
     # Firefox options
@@ -175,7 +179,7 @@ def scrape():
         driver.quit()
 
     if args.debug:
-        all_video_ids = list(all_video_ids)[:64]
+        all_video_ids = list(all_video_ids)[:8]
 
     all_video_ids = set(["v" + video_id for video_id in all_video_ids])
     os.makedirs("/airflow/xcom", exist_ok=True)

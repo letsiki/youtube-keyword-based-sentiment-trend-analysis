@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import json
 from datetime import datetime
 from pathlib import Path
 from math import ceil
@@ -26,7 +27,7 @@ from airflow.models import TaskInstance
 # -----------------------------DEFINE TASKS-----------------------------
 
 
-@task()
+@task
 def create_tables_if_not_exist():
     """runs airflow/include/create_tables.sql on the pg database"""
     sql_path = (
@@ -82,7 +83,7 @@ def fetch_comments(**context):
 
 
 @task
-def text_to_db(**context):
+def text_and_metadata_to_db(**context):
     """
     Connect to the db and write unique entries into the table
     Skips conflicts
@@ -91,26 +92,67 @@ def text_to_db(**context):
 
     hook = PostgresHook("my_postgres_conn")
 
-    text_files = Path("/opt/airflow/text")
+    text_dir = Path("/opt/airflow/text")
+    json_dir = Path("/opt/airflow/json/video")
 
     sql_path = (
         Path(__file__).parent.parent / "include" / "insert_text.sql"
     )
-    data = text_to_list(text_files)
+    data = text_to_list(text_dir)
+
+    metadata = json_to_list(
+        [f"{json_dir}/{entry[0]}.json" for entry in data]
+    )
+
+    # Convert the lists into dictionaries with the first element as the key
+    dict1 = {t[0]: t[1:] for t in metadata}
+    dict2 = {t[0]: t[1:] for t in data}
+
+    full_data = [
+        (key, *dict1[key], *dict2[key]) for key in dict1 if key in dict2
+    ]
+
+    print("Full data prepared for insertion:")
+    print(
+        list(
+            map(
+                lambda x: x[:30] if isinstance(x, str) else x, full_data
+            )
+        )
+    )
 
     sql = sql_path.read_text()
 
     try:
+        if not full_data:
+            print("[WARN] No data to insert.")
+            return  # Avoid trying to insert if no data
+
+        # Check if data is valid
+        for entry in full_data:
+            if len(entry) != 7:
+                print(
+                    f"[ERROR] Invalid data format: {entry[:30] if isinstance(entry, str) else entry}"
+                )
+                raise ValueError(f"Invalid data format: {entry}")
+
         with hook.get_conn() as conn:
             with conn.cursor() as cursor:
-                cursor.executemany(sql, vars_list=data)
+                print("[INFO] Executing batch insert...")
+                cursor.executemany(sql, vars_list=full_data)
             conn.commit()
+            print("[INFO] Data inserted successfully.")
     except Exception as e:
         print(f"[ERROR] DB insert failed: {e}")
         raise AirflowFailException("Failed during batch insert")
     finally:
         # Always clean up
-        for file in text_files.glob("*.txt"):
+        for file in text_dir.glob("*.txt"):
+            try:
+                os.remove(file)
+            except Exception as e:
+                print(f"[WARN] Could not delete {file}: {e}")
+        for file in json_dir.glob("*.json"):
             try:
                 os.remove(file)
             except Exception as e:
@@ -165,6 +207,35 @@ def text_to_list(path: Path | str) -> list[tuple]:
         vid_id = txt.stem
         vid_text = txt.read_text()
         data.append((vid_id, vid_text))
+    return data
+
+
+def json_to_list(json_filepaths: list[str]) -> list[tuple]:
+    """
+    function that extracts all json files from a
+    directory into a list of tuples
+    format:
+        [...]
+    """
+    data = []
+    for json_ in json_filepaths:
+        # print(json_filepaths)
+        with open(json_, "r") as f:
+            json_dict = json.load(f)
+        # Convert string to date object
+        date_obj = datetime.strptime(
+            json_dict["upload_date"], "%Y%m%d"
+        ).date()
+        data.append(
+            (
+                os.path.basename(json_).split(".")[0],
+                json_dict["title"],
+                json_dict["uploader"],
+                json_dict["description"],
+                json_dict["view_count"],
+                date_obj,
+            )
+        )
     return data
 
 
@@ -308,7 +379,11 @@ def audio_to_text():
         ],
     )
 
-    wait_for_files >> audio_transcriber_task >> text_to_db()
+    (
+        wait_for_files
+        >> audio_transcriber_task
+        >> text_and_metadata_to_db()
+    )
 
 
 # -----------------------------CREATE DAG-------------------------------
@@ -316,7 +391,7 @@ def audio_to_text():
 with DAG(
     dag_id="project-dag1",
     start_date=datetime(2025, 6, 28),
-    schedule="5,35 * * * *",
+    schedule="0-59/7 * * * *",
     # schedule=None,
     catchup=False,
     tags=["bblue-project"],
@@ -325,7 +400,7 @@ with DAG(
     # removes all containers (volumes are kept)
     cleanup_pg = BashOperator(
         task_id="cleanup_pg",
-        bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/*",
+        bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/text/*",
     )
 
     chunkify_task = create_chunks_out_of_urls(8)
