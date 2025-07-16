@@ -20,6 +20,7 @@ urls = [url[1:] for url in args.urls]
 
 
 ydl_opts = {
+    "quiet": True,
     "format": "251",
     "outtmpl": "/app/mp3/%(id)s.%(ext)s",
     "ignoreerrors": True,
@@ -37,12 +38,15 @@ print(f"looking for videos in {string_date}")
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     start = perf_counter()
     for url in ["https://www.youtube.com/watch?v=" + u for u in urls]:
-        
         info_dict = ydl.extract_info(url, download=False)
         if info_dict:
             video_date = info_dict.get("upload_date", None)
             print(f"video date is {video_date}")
-            if video_date == string_date:
+            if (
+                video_date == string_date
+                and info_dict["duration"] <= 900
+                and info_dict["language"] == "en"
+            ):
                 ydl.download(url)
                 metadata = {
                     "title": info_dict.get("title", None),

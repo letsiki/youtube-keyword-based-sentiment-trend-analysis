@@ -111,7 +111,8 @@ def text_and_metadata_to_db(**context):
     full_data = [
         (key, *dict1[key], *dict2[key]) for key in dict1 if key in dict2
     ]
-
+    print(f"found {len(metadata)} entries in metadata")
+    print(f"found {len(data)} entries in data")
     print("Full data prepared for insertion:")
     print(
         list(
@@ -141,6 +142,7 @@ def text_and_metadata_to_db(**context):
                 print("[INFO] Executing batch insert...")
                 cursor.executemany(sql, vars_list=full_data)
             conn.commit()
+            print(f"Inserted {len(full_data)} into the database")
             print("[INFO] Data inserted successfully.")
     except Exception as e:
         print(f"[ERROR] DB insert failed: {e}")
@@ -183,14 +185,8 @@ def file_count_check(ti: TaskInstance, folder_path: str) -> bool:
     # target_files_nr = len(
     #     ti.xcom_pull(task_ids="distributed_node.mp3_fetching")
     # )
-    file_count = len(
-        [
-            f
-            for f in os.listdir(folder_path)
-            if os.path.isfile(os.path.join(folder_path, f))
-        ]
-    )
-    return file_count >= 4
+    file_count = len(list(Path(folder_path).glob("*.mp3")))
+    return file_count >= 8
 
 
 def text_to_list(path: Path | str) -> list[tuple]:
@@ -394,7 +390,7 @@ with DAG(
     start_date=datetime(2025, 6, 28),
     # schedule="0-59/7 * * * *",
     # schedule=None,
-    schedule="42 14 * * * *",
+    schedule="59 * * * * *",
     max_active_runs=1,
     catchup=False,
     tags=["bblue-project"],
