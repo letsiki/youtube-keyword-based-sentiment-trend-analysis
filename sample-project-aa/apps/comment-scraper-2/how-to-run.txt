@@ -4,7 +4,7 @@ docker build --network=host --no-cache -t comment-scraper-2 .
 Container:
 docker run --network=host -d --name comment-scraper-app-2 -v $(pwd)/output:/app/output comment-scraper-2
 
-docker run -v --rm $(pwd)/output:/app/output comment-scraper-2 vHQIQd721v2o
+docker run -v --rm $(pwd)/output:/app/output comment-scraper-2 --urls vHQIQd721v2o
 
 Result:
 The jsons are in a output/ directory

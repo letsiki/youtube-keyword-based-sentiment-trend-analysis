@@ -111,7 +111,11 @@ def scrape():
                         "video-title",
                     )
                 )
-                if current_count >= MAX_VIDEOS_PER_QUERY:
+                if (
+                    current_count >= MAX_VIDEOS_PER_QUERY
+                    if not args.debug
+                    else 10
+                ):
                     break
                 current_scroll_height = driver.execute_script(
                     "return document.documentElement.scrollHeight"

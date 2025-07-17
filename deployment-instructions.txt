@@ -15,3 +15,7 @@ to access the database bring it up first by navigating to sample-project-aa/db a
 to bring it down, do NOT do docker compose down, because this will bring down the external volume used by airflow
 unless this is the intended behavior.
 If that happens, airflow will not have access to it. Fix by restarting airflow.
+
+config:
+- in the dag adjust the number of concurrent nodes in the 'to_chunks' function as necessary
+- in the docker operator that invokes the scraper remove debug when moving to production

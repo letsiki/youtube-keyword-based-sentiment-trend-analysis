@@ -9,6 +9,7 @@ from airflow.sdk import Label
 from docker.types import Mount
 from airflow import DAG
 from datetime import datetime
+import time
 from airflow.providers.discord.operators.discord_webhook import (
     DiscordWebhookOperator,
 )
@@ -74,12 +75,48 @@ def entry(u):
 
 @task
 def comments_to_db(**context):
-    pass
+    """
+    Connect to the db and write comments from the json files
+    generated earler.
+    (video id, timestamp) compososite key, serves as the primary key
+    """
 
+    hook = PostgresHook("my_postgres_conn")
 
-@task
-def fetch_comments(**context):
-    pass
+    comment_dir = Path("/opt/airflow/json/comments")
+
+    sql_path = (
+        Path(__file__).parent.parent / "include" / "insert_comments.sql"
+    )
+
+    sql = sql_path.read_text()
+
+    json_dir = Path("/opt/airflow/json/comments")
+
+    data = comm_json_to_list(json_dir)
+
+    try:
+        if not data:
+            print("[WARN] No data to insert.")
+            return  # Avoid trying to insert if no data
+
+        # Check if data is valid
+        for entry in data:
+            if len(entry) != 2:
+                print(
+                    f"[ERROR] Invalid data format: {entry[:30] if isinstance(entry, str) else entry}"
+                )
+                raise ValueError(f"Invalid data format: {entry}")
+        with hook.get_conn() as conn:
+            with conn.cursor() as cursor:
+                print("[INFO] Executing batch insert...")
+                cursor.executemany(sql, vars_list=data)
+                conn.commit()
+            print(f"Inserted {len(data)} into the database")
+            print("[INFO] Data inserted successfully.")
+    except Exception as e:
+        print(f"[ERROR] DB insert failed: {e}")
+        raise AirflowFailException("Failed during batch insert")
 
 
 @task
@@ -100,7 +137,7 @@ def text_and_metadata_to_db(**context):
     )
     data = text_to_list(text_dir)
 
-    metadata = json_to_list(
+    metadata = meta_json_to_list(
         [f"{json_dir}/{entry[0]}.json" for entry in data]
     )
 
@@ -148,7 +185,7 @@ def text_and_metadata_to_db(**context):
         print(f"[ERROR] DB insert failed: {e}")
         raise AirflowFailException("Failed during batch insert")
     finally:
-        # Always clean up
+        # Always clean up - optional happens at the dag clean up too
         for file in text_dir.glob("*.txt"):
             try:
                 os.remove(file)
@@ -179,14 +216,35 @@ def watcher():
 
 def file_count_check(ti: TaskInstance, folder_path: str) -> bool:
     """
-    function used by wait_for_files PythonSensor to ensure that mp3 files
-    are there prior to transcribing them.
+    Returns True if there is at least one .mp3 file
+    and the count has stayed the same for at least 60 seconds.
     """
-    # target_files_nr = len(
-    #     ti.xcom_pull(task_ids="distributed_node.mp3_fetching")
-    # )
-    file_count = len(list(Path(folder_path).glob("*.mp3")))
-    return file_count >= 8
+    current_count = len(list(Path(folder_path).glob("*.mp3")))
+    now = time.time()
+
+    if current_count < 1:
+        return False
+
+    # Retrieve previous count and timestamp
+    prev_data = (
+        ti.xcom_pull(task_ids=ti.task_id, key="file_count_state") or {}
+    )
+    prev_count = prev_data.get("count")
+    prev_time = prev_data.get("timestamp")
+
+    # If count changed or this is first run → update and wait
+    if prev_count != current_count or prev_time is None:
+        ti.xcom_push(
+            key="file_count_state",
+            value={"count": current_count, "timestamp": now},
+        )
+        return False
+
+    # If count stayed the same for over a minute → we're good
+    if (now - prev_time) >= 60:
+        return True
+
+    return False
 
 
 def text_to_list(path: Path | str) -> list[tuple]:
@@ -206,7 +264,25 @@ def text_to_list(path: Path | str) -> list[tuple]:
     return data
 
 
-def json_to_list(json_filepaths: list[str]) -> list[tuple]:
+def comm_json_to_list(path: Path | str) -> list[tuple]:
+    """
+    function that extracts all text files from a
+    directory into a list of tuples
+    format:
+      [(filename1, col1), (filename2, col2), ..., (filename, coln)]
+    """
+    if isinstance(path, str):
+        path = Path(path)
+    data = []
+    for json_ in path.glob("*.json"):
+        vid_id = json_.stem
+        with open(json_, "r") as f:
+            vid_dict = json.load(f)
+        data.append((vid_id, json.dumps(vid_dict)))
+    return data
+
+
+def meta_json_to_list(json_filepaths: list[str]) -> list[tuple]:
     """
     function that extracts all json files from a
     directory into a list of tuples
@@ -279,7 +355,26 @@ def comment_fetching(urls):
     storing them into a pg database.
     """
 
-    fetch_comments() >> comments_to_db()
+    fetch_comments = DockerOperator(
+        task_id="fetch_comments",
+        image="comment-scraper-2:latest",
+        auto_remove="never",
+        tty=True,
+        mount_tmp_dir=False,
+        docker_url="unix://var/run/docker.sock",
+        container_name="comment-scraper2_{{ ti.map_index }}",
+        command="--urls {{ ti.xcom_pull(task_ids='distributed_node.entry') | join(' ') }}",
+        # environment={"LOGICAL_DATE": "{{ ds | replace('-', '') }}"},
+        mounts=[
+            Mount(
+                source="/home/alex/Projects/bbd_project/sample-project-aa/json/comments",
+                target="/app/json/comments",
+                type="bind",
+            ),
+        ],
+    )
+
+    fetch_comments >> comments_to_db()
 
 
 @task_group
@@ -399,11 +494,12 @@ with DAG(
 
     # removes all containers (volumes are kept)
     cleanup_pg = BashOperator(
+        trigger_rule=TriggerRule.ALL_DONE,
         task_id="cleanup_pg",
-        bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/text/*",
+        bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && docker ps -a --filter 'name=comment-scraper2' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
     )
 
-    chunkify_task = create_chunks_out_of_urls(8)
+    chunkify_task = create_chunks_out_of_urls(6)
 
     spark_job = spark_operator_join_and_transform_to_sentiment()
 
@@ -412,20 +508,18 @@ with DAG(
     scraping_group = scraping()
     audio_to_text_group = audio_to_text()
 
+    cleanup_pg.as_teardown()
+
     (
         scraping_group
         >> chunkify_task
         >> Label("Expand")
         >> mapped_groups
         >> spark_job
-        >> cleanup_pg.as_teardown()
     )
 
-    (
-        scraping_group
-        >> audio_to_text_group
-        >> spark_job
-        >> cleanup_pg.as_teardown()
-    )
+    (scraping_group >> audio_to_text_group >> spark_job)
+
+    [spark_job, audio_to_text_group] >> cleanup_pg
 
     spark_job >> watcher()

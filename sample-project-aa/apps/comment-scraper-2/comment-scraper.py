@@ -86,11 +86,11 @@ def scrape_youtube_comments(video_id, max_comments=90):
                 if author and text and timestamp:
                     collected_comments.append(
                         {
-                            "video_id": video_url.split("v=")[-1].split(
-                                "&"
-                            )[
-                                0
-                            ],  # Extract video ID more robustly
+                            # "video_id": video_url.split("v=")[-1].split(
+                            #     "&"
+                            # )[
+                            #     0
+                            # ],  # Extract video ID more robustly
                             "author": author.inner_text().strip(),
                             "comment": text.inner_text().strip(),
                             "published_at": timestamp.inner_text().strip(),
@@ -113,16 +113,17 @@ def main():
         description="Scrape YouTube comments from multiple videos."
     )
     parser.add_argument(
-        "video_urls",
-        nargs="+",
+        "--urls",
+        nargs="*",
         help="List of YouTube video URLs to scrape",
+        default=[],
     )
     args = parser.parse_args()
 
-    output_dir = "output"
+    output_dir = "/app/json/comments"
     os.makedirs(output_dir, exist_ok=True)
 
-    for url in args.video_urls:
+    for url in args.urls:
         print(f"Scraping comments for: {url}")
         df = scrape_youtube_comments(url)
         if df is not None and not df.empty:
