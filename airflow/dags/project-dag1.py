@@ -350,7 +350,7 @@ def audio_to_text():
         op_kwargs={"folder_path": "/opt/airflow/mp3"},
         poke_interval=5,
         soft_fail=True,
-        timeout=300,
+        timeout=900,
         mode="poke",
     )
 

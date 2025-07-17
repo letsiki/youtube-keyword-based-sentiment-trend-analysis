@@ -44,7 +44,7 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             print(f"video date is {video_date}")
             if (
                 video_date == string_date
-                and info_dict["duration"] <= 900
+                and info_dict["duration"] <= 1500
                 and info_dict["language"] == "en"
             ):
                 ydl.download(url)

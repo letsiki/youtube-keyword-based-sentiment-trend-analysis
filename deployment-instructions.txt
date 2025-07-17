@@ -4,10 +4,11 @@
     docker compose up -d
 3. navigate to sample-project-aa
 4. locate to_text_conversion, url_scraper, yt_mp3_downloader directories
-5. navigate to each and build the images giving them the names transcribe-many:latest, url-scraper:latest, mp3-getter:latest, respectively
+5. navigate to each and build the images giving them the names transcribe-many:latest, url-scraper:latest, mp3-getter:latest, comment-scraper2:latest respectively
 6. To do so use the command docker build -t <image_name> .
-7. now navigate to host:8080 and use u:airflow p:airflow
-8. trigger the dag called project-dag1
+7. Ο χρήστης τρέχει την εντολή getent group docker στο terminal, έπειτα πηγαίνει στο αρχείο .env και βάζει το αριθμό που έβαλε στην μεταβλητή DOCKER_GID
+8. now navigate to host:8080 and use u:airflow p:airflow
+9. trigger the dag called project-dag1
 
 extra:
 to access the database bring it up first by navigating to sample-project-aa/db and typing docker compose up

@@ -35,12 +35,6 @@ def scrape():
     # arg_parser.add_argument("--head", action="store_true")
     args = arg_parser.parse_args()
 
-    if args.debug:
-        N_RESULTS_PER_QUERY = 1
-
-    # if args.head:
-    #     HEADLESS = False
-
     all_video_ids = set()
 
     # Firefox options
@@ -88,11 +82,6 @@ def scrape():
                 print(
                     f"No filter button for query {search_url} — skipping click."
                 )
-
-            # # Wait until at least one video title link is present
-            # wait.until(
-            #     EC.presence_of_element_located((By.ID, "video-title"))
-            # )
 
             # scroll load videos
             body = driver.find_element(By.TAG_NAME, "body")
@@ -143,21 +132,18 @@ def scrape():
             # Extract hrefs
             urls = [link.get_attribute("href") for link in a_tags]
 
-            print(f"these are the {urls}")
-
             # get video id from url
             video_ids = [
                 parse_qs(urlparse(url).query).get("v", [None])[0]
                 for url in urls
             ]
+            print(f"Received {len(set(video_ids))}")
             all_video_ids.update(video_ids)
-            print(f"these are the {video_ids} so far")
+            print(f"Received {len(all_video_ids)} so far")
 
+        print(f"Received {len(all_video_ids)} in total")
     finally:
         driver.quit()
-        # pass
-    # if args.debug:
-    #     all_video_ids = list(all_video_ids)[:8]
 
     all_video_ids = set(
         [
@@ -166,7 +152,6 @@ def scrape():
             if isinstance(video_id, str)
         ]
     )
-    print(f"these are the final video ids {all_video_ids}")
     os.makedirs("/airflow/xcom", exist_ok=True)
     with open("/airflow/xcom/return.pkl", "wb") as f:
         import pickle

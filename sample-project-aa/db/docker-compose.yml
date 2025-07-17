@@ -5,7 +5,6 @@ services:
       POSTGRES_DB: project_data
     volumes:
       - postgres_volume_project:/var/lib/postgresql/data
-      - ./exports:/exports
     ports:
       - "5433:5432"
 volumes:
