@@ -11,10 +11,10 @@
 9. trigger the dag called project-dag1
 
 extra:
-to access the database bring it up first by navigating to sample-project-aa/db and typing docker compose up
-to bring it down, do NOT do docker compose down, because this will bring down the external volume used by airflow
-unless this is the intended behavior.
-If that happens, airflow will not have access to it. Fix by restarting airflow.
+to view the database when airflow is not running the dag you can use docker compose file in the sampe-project-aa/db folder.
+it does not contain and username and password. It connects to an existing volume and the credentials are already stored inside of it.
+make sure to bring it down when you are done.
+You don't want them to run simultaneously, because they share the same volume
 
 config:
 - in the dag adjust the number of concurrent nodes in the 'to_chunks' function as necessary
