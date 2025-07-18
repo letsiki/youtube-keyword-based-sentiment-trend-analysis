@@ -494,6 +494,19 @@ with DAG(
     tags=["bblue-project"],
 ) as dag:
 
+    # notify on error
+    discord_notify_task = DiscordWebhookOperator(
+        task_id="notify_discord",
+        trigger_rule=TriggerRule.ONE_FAILED,
+        message="""
+    🚨 *DAG Failed!*
+    - DAG: `{{ dag.dag_id }}`
+    - Run ID: `{{ run_id }}`
+    - Execution date: `{{ ds }}`
+    """,
+        http_conn_id="discord_conn_id",
+    )
+
     # removes all containers (volumes are kept)
     cleanup_pg = BashOperator(
         trigger_rule=TriggerRule.ALL_DONE,
@@ -524,4 +537,4 @@ with DAG(
 
     [spark_job, audio_to_text_group] >> cleanup_pg
 
-    spark_job >> watcher()
+    spark_job >> watcher() >> discord_notify_task
