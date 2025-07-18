@@ -8,7 +8,7 @@ import json
 
 parser = argparse.ArgumentParser()
 # parser.add_argument("--debug", action="store_true")
-parser.add_argument("--urls", type=str, nargs="+")
+parser.add_argument("--urls", type=str, nargs="*", default=[])
 # parser.add_argument("--port", type=int, default=8000)
 
 args = parser.parse_args()

@@ -23,6 +23,7 @@ from airflow.exceptions import AirflowException, AirflowFailException
 from airflow.models.xcom_arg import XComArg
 from airflow.providers.standard.sensors.python import PythonSensor
 from airflow.models import TaskInstance
+from airflow.models.param import Param
 
 
 # -----------------------------DEFINE TASKS-----------------------------
@@ -51,11 +52,11 @@ def create_tables_if_not_exist():
 
 
 @task
-def create_chunks_out_of_urls(n_chunks, **context):
+def create_chunks_out_of_urls(**context):
     """
     split urls into chunks, to facilitate parallel processing
     """
-
+    n_chunks = context["params"]["worker_nr"]
     url_list = context["ti"].xcom_pull(task_ids="scraping.scraper_task")
     avg = ceil(len(url_list) / n_chunks)
     chunked_urls = [
@@ -485,9 +486,10 @@ with DAG(
     dag_id="project-dag1",
     start_date=datetime(2025, 6, 28),
     # schedule="0-59/7 * * * *",
-    # schedule=None,
-    schedule="59 * * * * *",
+    schedule=None,
+    # schedule="59 * * * * *",
     max_active_runs=1,
+    params={"worker_nr": Param(9, type="integer")},
     catchup=False,
     tags=["bblue-project"],
 ) as dag:
@@ -499,7 +501,7 @@ with DAG(
         bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && docker ps -a --filter 'name=comment-scraper2' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
     )
 
-    chunkify_task = create_chunks_out_of_urls(6)
+    chunkify_task = create_chunks_out_of_urls()
 
     spark_job = spark_operator_join_and_transform_to_sentiment()
 
