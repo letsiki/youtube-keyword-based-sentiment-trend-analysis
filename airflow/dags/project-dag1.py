@@ -417,7 +417,7 @@ def scraping():
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
         do_xcom_push=True,
-        command="--debug",
+        command="{% if params.debug %}--debug{% endif %}",
         retrieve_output=True,
         retrieve_output_path="/airflow/xcom/return.pkl",
         container_name="scraper_container",
@@ -489,7 +489,10 @@ with DAG(
     schedule=None,
     # schedule="59 * * * * *",
     max_active_runs=1,
-    params={"worker_nr": Param(9, type="integer")},
+    params={
+        "worker_nr": Param(9, type="integer"),
+        "debug": Param(False, "boolean"),
+    },
     catchup=False,
     tags=["bblue-project"],
 ) as dag:
