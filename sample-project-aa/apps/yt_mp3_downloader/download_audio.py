@@ -21,7 +21,7 @@ urls = [url[1:] for url in args.urls]
 
 ydl_opts = {
     "quiet": True,
-    "format": "251",
+    "format": "251/bestaudio",
     "outtmpl": "/app/mp3/%(id)s.%(ext)s",
     "ignoreerrors": True,
     "postprocessors": [
@@ -44,7 +44,9 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             print(f"video date is {video_date}")
             if (
                 video_date == string_date
-                and info_dict["duration"] <= 1500
+                and info_dict.get("duration")
+                and info_dict.get("duration") <= 1500
+                and info_dict.get("language")
                 and info_dict["language"] == "en"
             ):
                 ydl.download(url)

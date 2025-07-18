@@ -23,7 +23,7 @@ FIREFOX_BINARY = os.getenv(
 )
 SEARCH_URL_TEMPLATE = "https://www.youtube.com/results?search_query={}"
 WAIT_TIME = 15
-MAX_VIDEOS_PER_QUERY = 2000
+MAX_VIDEOS_PER_QUERY = 500
 
 
 def scrape():
@@ -93,7 +93,7 @@ def scrape():
 
                 # Wait up to 4 seconds for new videos to load
                 try:
-                    WebDriverWait(driver, 4).until(
+                    WebDriverWait(driver, 8).until(
                         lambda d: len(
                             d.find_elements(
                                 By.ID,

@@ -492,6 +492,8 @@ with DAG(
     params={
         "worker_nr": Param(9, type="integer"),
         "debug": Param(False, "boolean"),
+        "max_results_per_page": Param(500, "integer"),
+        "keywords": Param(["CNN Israel", "BBC Israel"], "list"),
     },
     catchup=False,
     tags=["bblue-project"],
