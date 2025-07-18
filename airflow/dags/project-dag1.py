@@ -16,7 +16,6 @@ from airflow.providers.discord.operators.discord_webhook import (
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.providers.docker.operators.docker import DockerOperator
-from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.utils.state import State
 from airflow.exceptions import AirflowException, AirflowFailException
@@ -484,10 +483,9 @@ def audio_to_text():
 
 with DAG(
     dag_id="project-dag1",
-    start_date=datetime(2025, 6, 28),
-    # schedule="0-59/7 * * * *",
-    schedule=None,
-    # schedule="59 * * * * *",
+    start_date=datetime(2025, 6, 30),
+    schedule="59 23 * * *",
+    catchup=True,
     max_active_runs=1,
     params={
         "worker_nr": Param(9, type="integer"),
@@ -495,7 +493,6 @@ with DAG(
         "max_results_per_page": Param(500, "integer"),
         "keywords": Param(["CNN Israel", "BBC Israel"], "list"),
     },
-    catchup=False,
     tags=["bblue-project"],
 ) as dag:
 
