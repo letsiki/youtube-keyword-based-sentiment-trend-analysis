@@ -2,20 +2,20 @@ FROM jupyter/pyspark-notebook:latest
 
 USER root
 
-# Εγκατάσταση Python packages
-RUN pip install text2emotion psycopg2-binary emoji==1.6.3
+# Install required Python packages
+RUN pip install text2emotion psycopg2-binary emoji==1.6.3 dateparser sumy
 
-# Κατέβασμα των απαραίτητων NLTK δεδομένων για text2emotion
+# Download necessary NLTK data for text2emotion and sumy
 RUN python -c "import nltk; nltk.download('wordnet'); nltk.download('omw-1.4'); nltk.download('punkt'); nltk.download('punkt_tab')"
 
-# Προσθήκη PostgreSQL JDBC driver στον φάκελο των Spark jars
+# Add PostgreSQL JDBC driver to Spark jars folder
 ADD https://jdbc.postgresql.org/download/postgresql-42.6.0.jar /usr/local/spark/jars/
 
-# Αντιγραφή του Python αρχείου ανάλυσης
+# Copy the Python analysis script into the container
 COPY analyze_emotions.py /home/jovyan/
 
-# Ορισμός working directory
+# Set working directory
 WORKDIR /home/jovyan/
 
-# Εκκίνηση του Spark job
+# Run the Spark job
 CMD ["spark-submit", "analyze_emotions.py"]

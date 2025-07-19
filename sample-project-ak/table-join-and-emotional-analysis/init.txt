@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS text_from_audio (
 CREATE TABLE IF NOT EXISTS comments (
     id SERIAL PRIMARY KEY,
     video_id TEXT NOT NULL,
-    inserted_at TIMESTAMPTZ NOT NULL,
+    inserted_at DATE NOT NULL,
     author TEXT NOT NULL,
     comment TEXT NOT NULL,
     published_at TEXT NOT NULL
@@ -33,16 +33,17 @@ VALUES
 ;
 
 
+
 -- Updated dummy data for comments on Iran-Israel conflict
 INSERT INTO comments (video_id, inserted_at, author, comment, published_at)
 VALUES
-('vid101', '2025-07-17 09:15:42.1032 +0300', 'james_p', 'Very informative video. Hoping for peace soon.', 'πριν από 30 μέρες'),
-('vid101', '2025-07-17 11:45:22.7814 +0300', 'sara_uk', 'It’s scary how fast things are escalating.', 'πριν από έναν μήνα'),
-('vid102', '2025-07-17 13:02:57.1243 +0300', 'mehdi_r', 'Iran is defending itself. Context matters!', 'πριν από 31 μέρες'),
-('vid102', '2025-07-17 13:47:36.9127 +0300', 'avi_b', 'Israel has every right to protect its borders.', 'πριν από 30 μέρες'),
-('vid103', '2025-07-17 14:30:13.4450 +0300', 'historybuff', 'This timeline helped me understand what’s going on.', 'πριν από 29 μέρες'),
-('vid103', '2025-07-17 15:10:55.3671 +0300', 'nina_r', 'Too many innocent people suffering.', 'πριν από έναν μήνα'),
-('vid104', '2025-07-17 16:05:48.2203 +0300', 'mark_d', 'Proxy wars are dangerous and unpredictable.', 'πριν από 28 μέρες'),
-('vid104', '2025-07-17 16:55:11.6549 +0300', 'yasmin_m', 'Good breakdown of the militia networks.', 'πριν από 29 μέρες'),
-('vid105', '2025-07-17 17:12:37.8888 +0300', 'leo2025', 'Excellent insight into the economic risks.', 'πριν από έναν μήνα'),
-('vid105', '2025-07-17 17:43:29.0613 +0300', 'dimitris_g', 'The world needs more diplomacy, not war.', 'πριν από 30 μέρες');
+('vid101', '2025-07-14', 'james_p', 'Very informative video. Hoping for peace soon.', '2025-07-14T08:15:00'),
+('vid101', '2025-07-14', 'sara_uk', 'It’s scary how fast things are escalating.', '2025-07-14T09:42:00'),
+('vid102', '2025-07-13', 'mehdi_r', 'Iran is defending itself. Context matters!', '2025-07-13T11:30:00'),
+('vid102', '2025-07-13', 'avi_b', 'Israel has every right to protect its borders.', '2025-07-13T12:05:00'),
+('vid103', '2025-07-12', 'historybuff', 'This timeline helped me understand what’s going on.', '2025-07-12T15:20:00'),
+('vid103', '2025-07-12', 'nina_r', 'Too many innocent people suffering.', '2025-07-12T16:40:00'),
+('vid104', '2025-07-11', 'mark_d', 'Proxy wars are dangerous and unpredictable.', '2025-07-11T10:10:00'),
+('vid104', '2025-07-11', 'yasmin_m', 'Good breakdown of the militia networks.', '2025-07-11T11:35:00'),
+('vid105', '2025-07-10', 'leo2025', 'Excellent insight into the economic risks.', '2025-07-10T09:55:00'),
+('vid105', '2025-07-10', 'dimitris_g', 'The world needs more diplomacy, not war.', '2025-07-10T10:45:00');
