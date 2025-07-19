@@ -6,6 +6,13 @@ import pickle
 import pathlib
 import json
 
+
+def clean_unicode(s):
+    if isinstance(s, str):
+        return s.encode("utf-8", "replace").decode("utf-8")
+    return s
+
+
 parser = argparse.ArgumentParser()
 # parser.add_argument("--debug", action="store_true")
 parser.add_argument("--urls", type=str, nargs="*", default=[])
@@ -58,10 +65,16 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     "view_count": info_dict.get("view_count", None),
                 }
 
+                safe_metadata = {
+                    k: clean_unicode(v) for k, v in metadata.items()
+                }
+
                 with open(
                     f"/app/json/video/{info_dict["id"]}.json", "w"
                 ) as json_file:
-                    json.dump(metadata, json_file)
+                    json.dump(
+                        safe_metadata, json_file, ensure_ascii=False
+                    )
     br160_time = round(perf_counter() - start, 2)
 nr_files_extracted = len(list(pathlib.Path("/app/mp3").glob("*.mp3")))
 

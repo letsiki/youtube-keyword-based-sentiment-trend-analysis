@@ -1,12 +1,21 @@
 services:
   postgres:
     image: postgres:15
+    container_name: data_warehouse
     environment:
       POSTGRES_DB: project_data
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
     volumes:
       - postgres_volume_project:/var/lib/postgresql/data
     ports:
       - "5433:5432"
+    networks:
+      - airflow_default  # ← match exactly what Airflow is using
+
 volumes:
   postgres_volume_project:
+
+networks:
+  airflow_default:
     external: true

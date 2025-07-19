@@ -10,8 +10,10 @@ CREATE TABLE IF NOT EXISTS text_from_audio (
 );
 
 CREATE TABLE IF NOT EXISTS comments_table (
+    id SERIAL PRIMARY KEY,
     video_id TEXT NOT NULL,
     inserted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    comments JSONB NOT NULL,
-    PRIMARY KEY (video_id, inserted_at)
+    author VARCHAR(128) NOT NULL,
+    comment TEXT NOT NULL,
+    published_at VARCHAR(128) NOT NULL
 );

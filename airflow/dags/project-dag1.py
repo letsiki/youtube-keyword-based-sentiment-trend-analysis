@@ -15,6 +15,7 @@ from airflow.providers.discord.operators.discord_webhook import (
 )
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.utils.state import State
@@ -83,7 +84,7 @@ def comments_to_db(**context):
 
     hook = PostgresHook("my_postgres_conn")
 
-    comment_dir = Path("/opt/airflow/json/comments")
+    # comment_dir = Path("/opt/airflow/json/comments")
 
     sql_path = (
         Path(__file__).parent.parent / "include" / "insert_comments.sql"
@@ -102,7 +103,7 @@ def comments_to_db(**context):
 
         # Check if data is valid
         for entry in data:
-            if len(entry) != 2:
+            if len(entry) != 4:
                 print(
                     f"[ERROR] Invalid data format: {entry[:30] if isinstance(entry, str) else entry}"
                 )
@@ -277,8 +278,16 @@ def comm_json_to_list(path: Path | str) -> list[tuple]:
     for json_ in path.glob("*.json"):
         vid_id = json_.stem
         with open(json_, "r") as f:
-            vid_dict = json.load(f)
-        data.append((vid_id, json.dumps(vid_dict)))
+            vid_dict_list = json.load(f)
+        for vid_dict in vid_dict_list:
+            data.append(
+                (
+                    vid_id,
+                    vid_dict["author"][1:],
+                    vid_dict["comment"],
+                    vid_dict["published_at"],
+                )
+            )
     return data
 
 
@@ -311,6 +320,11 @@ def meta_json_to_list(json_filepaths: list[str]) -> list[tuple]:
     return data
 
 
+@task
+def check_postgres_conn():
+    PostgresHook(postgres_conn_id="my_postgres_conn").get_conn()
+
+
 # -----------------------------DEFINE GROUPS----------------------------
 
 
@@ -324,6 +338,7 @@ def mp3_fetching(urls):
     mp3_getter_task = DockerOperator(
         task_id="mp3_getter_task",
         image="mp3-getter:latest",
+        retries=0,
         auto_remove="never",
         tty=True,
         mount_tmp_dir=False,
@@ -358,6 +373,7 @@ def comment_fetching(urls):
     fetch_comments = DockerOperator(
         task_id="fetch_comments",
         image="comment-scraper-2:latest",
+        retries=0,
         auto_remove="never",
         tty=True,
         mount_tmp_dir=False,
@@ -390,28 +406,29 @@ def distributed_node(urls):
 @task_group
 def scraping():
     """
-    Group responsible for initiating a pg container, create tables if necessary
+    Group responsible for checking db connection, create tables if necessary
     and fetch all relevant urls (video id's) through scraping.
     """
-    # creates a pg instance mounting it to postgres_volume_project
-    start_pg = BashOperator(
-        task_id="start_pg",
-        bash_command=(
-            "docker run -d --name airflow_pg_temp "
-            "--network airflow_default "  # or whatever network Airflow uses
-            "-e POSTGRES_USER=airflow "
-            "-e POSTGRES_PASSWORD=airflow "
-            "-e POSTGRES_DB=project_data "
-            "-v postgres_volume_project:/var/lib/postgresql/data "
-            "postgres:15"
-        ),
-    )
+    # # creates a pg instance mounting it to postgres_volume_project
+    # start_pg = BashOperator(
+    #     task_id="start_pg",
+    #     bash_command=(
+    #         "docker run -d --name airflow_pg_temp "
+    #         "--network airflow_default "  # or whatever network Airflow uses
+    #         "-e POSTGRES_USER=airflow "
+    #         "-e POSTGRES_PASSWORD=airflow "
+    #         "-e POSTGRES_DB=project_data "
+    #         "-v postgres_volume_project:/var/lib/postgresql/data "
+    #         "postgres:15"
+    #     ),
+    # )
 
     # user keywords to find playlists and return all urls
     scraper_task = DockerOperator(
         task_id="scraper_task",
         image="url-scraper:latest",
         auto_remove="never",
+        retries=0,
         tty=True,
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
@@ -423,7 +440,7 @@ def scraping():
     )
 
     (
-        start_pg.as_setup()
+        check_postgres_conn()
         >> create_tables_if_not_exist()
         >> scraper_task
     )
@@ -453,6 +470,7 @@ def audio_to_text():
         task_id="audio_transcriber",
         image="transcribe-many:latest",
         auto_remove="never",
+        retries=0,
         tty=True,
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
@@ -482,13 +500,13 @@ def audio_to_text():
 # -----------------------------CREATE DAG-------------------------------
 
 with DAG(
-    dag_id="project-dag1",
-    start_date=datetime(2025, 6, 30),
+    dag_id="project-dag",
+    start_date=datetime(2025, 6, 1),
     schedule="59 23 * * *",
-    catchup=True,
+    catchup=False,
     max_active_runs=1,
     params={
-        "worker_nr": Param(9, type="integer"),
+        "worker_nr": Param(6, type="integer"),
         "debug": Param(False, "boolean"),
         "max_results_per_page": Param(500, "integer"),
         "keywords": Param(["CNN Israel", "BBC Israel"], "list"),
@@ -510,10 +528,10 @@ with DAG(
     )
 
     # removes all containers (volumes are kept)
-    cleanup_pg = BashOperator(
+    cleanup = BashOperator(
         trigger_rule=TriggerRule.ALL_DONE,
-        task_id="cleanup_pg",
-        bash_command="docker rm -f airflow_pg_temp scraper_container whisper_container || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && docker ps -a --filter 'name=comment-scraper2' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
+        task_id="cleanup",
+        bash_command="docker rm -f scraper_container whisper_container || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && docker ps -a --filter 'name=comment-scraper2' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
     )
 
     chunkify_task = create_chunks_out_of_urls()
@@ -525,7 +543,7 @@ with DAG(
     scraping_group = scraping()
     audio_to_text_group = audio_to_text()
 
-    cleanup_pg.as_teardown()
+    cleanup.as_teardown()
 
     (
         scraping_group
@@ -537,6 +555,10 @@ with DAG(
 
     (scraping_group >> audio_to_text_group >> spark_job)
 
-    [spark_job, audio_to_text_group] >> cleanup_pg
+    [spark_job, audio_to_text_group] >> cleanup
 
-    spark_job >> watcher() >> discord_notify_task
+    (
+        spark_job
+        >> watcher()
+        >> [discord_notify_task, EmptyOperator(task_id="Failure")]
+    )
