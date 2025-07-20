@@ -15,17 +15,26 @@ from pyspark.sql.types import StringType, IntegerType, TimestampType
 logging.basicConfig(level=logging.ERROR)
 
 # Start Spark
-spark = SparkSession.builder \
-    .appName("EmotionAnalysisAndSummarization") \
-    .getOrCreate()
+spark = SparkSession.builder.appName(
+    "EmotionAnalysisAndSummarization"
+).getOrCreate()
 
 # JDBC connection
-jdbc_url = "jdbc:postgresql://postgres-db:5432/mydb"
-properties = {"user": "user", "password": "password", "driver": "org.postgresql.Driver"}
+jdbc_url = "jdbc:postgresql://data_warehouse:5432/project_data"
+properties = {
+    "user": "airflow",
+    "password": "airflow",
+    "driver": "org.postgresql.Driver",
+}
 
 # Load tables
-comments_df = spark.read.jdbc(url=jdbc_url, table="comments", properties=properties)
-text_df = spark.read.jdbc(url=jdbc_url, table="text_from_audio", properties=properties)
+comments_df = spark.read.jdbc(
+    url=jdbc_url, table="comments_table", properties=properties
+)
+text_df = spark.read.jdbc(
+    url=jdbc_url, table="text_from_audio", properties=properties
+)
+
 
 # === UDF analyze emotion ===
 def analyze_emotion(comment):
@@ -36,7 +45,9 @@ def analyze_emotion(comment):
     except Exception as e:
         return json.dumps({"error": str(e)})
 
+
 emotion_udf = udf(analyze_emotion, StringType())
+
 
 # === UDF: Text summarization (based on word count) ===
 def summarize_text(text):
@@ -50,7 +61,9 @@ def summarize_text(text):
     except Exception as e:
         return f"SummaryError: {str(e)}"
 
+
 summary_udf = udf(summarize_text, StringType())
+
 
 # emotion_to_number
 def map_emotion_to_number(emotion_str):
@@ -63,14 +76,16 @@ def map_emotion_to_number(emotion_str):
             "Surprise": 0,
             "Angry": -3,
             "Sad": -1,
-            "Fear": -2
+            "Fear": -2,
         }
         return mapping.get(emotion, "Not Found")
     except Exception as e:
         logging.error(f"Exception in map_emotion_to_number: {e}")
         return str(e)
 
+
 emotion_number_udf = udf(map_emotion_to_number, IntegerType())
+
 
 # UDF για μετατροπή σχετικής ημερομηνίας σε timestamp
 def parse_relative_date(published_at, inserted_at):
@@ -84,9 +99,9 @@ def parse_relative_date(published_at, inserted_at):
             published_at,
             settings={
                 "RELATIVE_BASE": inserted_at,
-                "PREFER_DATES_FROM": "past"
+                "PREFER_DATES_FROM": "past",
             },
-            languages=["el"]
+            languages=["el"],
         )
 
         return parsed_date
@@ -94,25 +109,29 @@ def parse_relative_date(published_at, inserted_at):
         logging.error(f"Exception in parse_relative_date: {e}")
         return str(e)
 
+
 # Τύπος εξόδου Timestamp
 parse_relative_date_udf = udf(parse_relative_date, TimestampType())
 
-comments_df = comments_df.withColumn("published_at_absolute",\
-                                     parse_relative_date_udf(col("published_at"),col("inserted_at")))
+comments_df = comments_df.withColumn(
+    "published_at_absolute",
+    parse_relative_date_udf(col("published_at"), col("inserted_at")),
+)
 # Join the two tables
 joined_df = text_df.join(comments_df, on="video_id")
 
 # Apply UDFs
-final_df = joined_df \
-    .withColumn("emotion", emotion_udf(col("comment"))) \
-    .withColumn("text_field", summary_udf(col("text_field")))\
-    .withColumnRenamed("text_field", "video_summary")\
-    .withColumn("emotion_number",emotion_number_udf(col("emotion")))
+final_df = (
+    joined_df.withColumn("emotion", emotion_udf(col("comment")))
+    .withColumn("text_field", summary_udf(col("text_field")))
+    .withColumnRenamed("text_field", "video_summary")
+    .withColumn("emotion_number", emotion_number_udf(col("emotion")))
+)
 
 # Register to new table
 final_df.write.jdbc(
     url=jdbc_url,
     table="text_with_summary_and_comments_with_emotion",
     mode="overwrite",
-    properties=properties
+    properties=properties,
 )

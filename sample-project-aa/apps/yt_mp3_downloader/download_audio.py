@@ -30,6 +30,9 @@ ydl_opts = {
     "quiet": True,
     "format": "251/bestaudio",
     "outtmpl": "/app/mp3/%(id)s.%(ext)s",
+    "http_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    },
     "ignoreerrors": True,
     "postprocessors": [
         {

@@ -23,7 +23,7 @@ FIREFOX_BINARY = os.getenv(
 )
 SEARCH_URL_TEMPLATE = "https://www.youtube.com/results?search_query={}"
 WAIT_TIME = 15
-MAX_VIDEOS_PER_QUERY = 500
+MAX_VIDEOS_PER_QUERY = 50
 
 
 def scrape():

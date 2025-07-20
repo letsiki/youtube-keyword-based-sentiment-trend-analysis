@@ -3,19 +3,14 @@
     docker compose up airflow-init
     docker compose up -d
 3. navigate to sample-project-aa
-4. locate to_text_conversion, url_scraper, yt_mp3_downloader directories
-5. navigate to each and build the images giving them the names transcribe-many:latest, url-scraper:latest, mp3-getter:latest, comment-scraper2:latest respectively
+4. locate to_text_conversion, url_scraper, yt_mp3_downloader, table-join-and-emotional-analysis, video_filter  directories
+5. navigate to each and build the images giving them the names transcribe-many:latest, url-scraper:latest,  mp3-getter:latest, comment-scraper2:latest, spark_job:latest, video_filter:latest respectively
 6. To do so use the command docker build -t <image_name> .
 7. Ο χρήστης τρέχει την εντολή getent group docker στο terminal, έπειτα πηγαίνει στο αρχείο .env και βάζει το αριθμό που έβαλε στην μεταβλητή DOCKER_GID
-8. now navigate to host:8080 and use u:airflow p:airflow
+8. Bring the database up by navigating to sample-project-aa/db and running docker compose up -d
+8. To connect to the db use user:airflow password:airflow db:project_data
+8. To connect to airflow now navigate to ip:8080 and use u:airflow p:airflow
 9. trigger the dag called project-dag1
 
-extra:
-to view the database when airflow is not running the dag you can use docker compose file in the sampe-project-aa/db folder.
-it does not contain and username and password. It connects to an existing volume and the credentials are already stored inside of it.
-make sure to bring it down when you are done.
-You don't want them to run simultaneously, because they share the same volume
-
 config:
-- in the dag adjust the number of concurrent nodes in the 'to_chunks' function as necessary
-- in the docker operator that invokes the scraper remove debug when moving to production
+you can use the parameters when triggering to adjust nr_workers and debug mode. The rest of the parameters are not functioning yet.

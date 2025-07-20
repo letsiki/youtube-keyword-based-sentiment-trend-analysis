@@ -6,41 +6,50 @@ import pickle
 import pathlib
 import json
 from urllib.parse import quote, urlparse, parse_qs
-from concurrent.futures import ThreadPoolExecutor
-
 
 parser = argparse.ArgumentParser()
-# parser.add_argument("--debug", action="store_true")
 parser.add_argument("--urls", type=str, nargs="*", default=[])
-# parser.add_argument("--port", type=int, default=8000)
-
 args = parser.parse_args()
 
-# url = "https://www.youtube.com/watch?list=PLpTHjAucqq9A2IDIsR8Ftbg7U6bKCMrcr"
-
-# remove prefix 'v' from video id's
 urls = [url[1:] for url in args.urls]
-
 filtered_urls = []
 
-ydl_opts = {"quiet": True, "skip_download": True}
-
-string_date = os.environ.get("LOGICAL_DATE")
+string_date = os.environ.get("LOGICAL_DATE", None)
 print(f"looking for videos in {string_date}")
+
+ydl_opts = {
+    "quiet": True,
+    "skip_download": True,
+    "http_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    },
+}
 
 
 def process_url(u):
     full_url = "https://www.youtube.com/watch?v=" + u
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # First: quick probe for upload_date
+            info = ydl.extract_info(
+                full_url, download=False, process=False
+            )
+            if not info or info.get("upload_date") != string_date:
+                return None
+
+            # Second: full metadata check
             info = ydl.extract_info(full_url, download=False)
-        if (
-            info
-            and info.get("upload_date") == string_date
-            and info.get("duration")
-            and info["duration"] <= 1500
-            and info.get("language") == "en"
-        ):
+            # duration = info.get("duration")
+            # language = info.get("language")
+
+            # # Accept if duration is missing or <= 1500
+            # if duration is not None and duration > 1500:
+            #     return None
+
+            # # Accept if language is missing or explicitly 'en'
+            # if language is not None and language != "en":
+            #     return None
+
             return full_url
     except Exception as e:
         print(f"Failed: {u} with {e}")
@@ -48,22 +57,21 @@ def process_url(u):
 
 
 start = perf_counter()
-with ThreadPoolExecutor(max_workers=9) as executor:
-    results = list(executor.map(process_url, urls))
+results = []
+for url in urls:
+    r = process_url(url)
+    if r:
+        results.append(r)
 
-filtered_urls = [r for r in results if r]
+filtered_urls = results
 
-# extract video_id from url and prefix it with v
 video_ids = [
     "v" + parse_qs(urlparse(url).query).get("v", [None])[0]
     for url in filtered_urls
 ]
 
 br160_time = round(perf_counter() - start, 2)
-
-# change to len of list
 nr_files_extracted = len(video_ids)
-
 
 print(f"data filtered, keeping {nr_files_extracted} urls")
 

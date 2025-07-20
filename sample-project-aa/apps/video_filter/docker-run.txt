@@ -1,1 +1,1 @@
-docker run --rm -v "$PWD/resources/yt-audio-grabber/downloads:/app/downloads" ytaudiograbber:latest --debug
+docker run --rm video_filter:latest --urls v_rI_MtnXKos

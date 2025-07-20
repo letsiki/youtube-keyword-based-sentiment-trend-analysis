@@ -199,9 +199,9 @@ def text_and_metadata_to_db(**context):
                 print(f"[WARN] Could not delete {file}: {e}")
 
 
-@task(trigger_rule=TriggerRule.ONE_SUCCESS)
-def spark_operator_join_and_transform_to_sentiment(**context):
-    pass
+# @task(trigger_rule=TriggerRule.ONE_SUCCESS)
+# def spark_operator_join_and_transform_to_sentiment(**context):
+#     pass
 
 
 @task(trigger_rule=TriggerRule.ONE_FAILED, retries=0)
@@ -373,8 +373,6 @@ def comment_fetching(urls):
     fetch_comments = DockerOperator(
         task_id="fetch_comments",
         image="comment-scraper-2:latest",
-        cpus=1.0,
-        mem_limit="1g",
         retries=0,
         auto_remove="never",
         tty=True,
@@ -482,7 +480,7 @@ def audio_to_text():
         op_kwargs={"folder_path": "/opt/airflow/mp3"},
         poke_interval=5,
         soft_fail=True,
-        timeout=900,
+        timeout=300,
         mode="poke",
     )
 
@@ -527,7 +525,7 @@ with DAG(
     max_active_runs=1,
     default_args={"retries": 0},
     params={
-        "worker_nr": Param(9, type="integer"),
+        "worker_nr": Param(1, type="integer"),
         "debug": Param(False, "boolean"),
         "max_results_per_page": Param(500, "integer"),
         "keywords": Param(["CNN Israel", "BBC Israel"], "list"),
@@ -548,16 +546,31 @@ with DAG(
         http_conn_id="discord_conn_id",
     )
 
+    # spark operator
+    spark_operator_join_and_transform_to_sentiment = DockerOperator(
+        task_id="spark_job",
+        image="spark_job:latest",
+        auto_remove="never",
+        retries=0,
+        tty=True,
+        mount_tmp_dir=False,
+        trigger_rule=TriggerRule.ONE_SUCCESS,
+        docker_url="unix://var/run/docker.sock",
+        # environment={"LOGICAL_DATE": "{{ ds | replace('-', '') }}"},
+        network_mode="airflow_default",
+        container_name="spark_job",
+    )
+
     # removes all containers (volumes are kept)
     cleanup = BashOperator(
         trigger_rule=TriggerRule.ALL_DONE,
         task_id="cleanup",
-        bash_command="docker rm -f scraper_container whisper_container video_filter || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && docker ps -a --filter 'name=comment-scraper2' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
+        bash_command="docker rm -f scraper_container whisper_container video_filter spark_job || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && docker ps -a --filter 'name=comment-scraper2' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
     )
 
     chunkify_task = create_chunks_out_of_urls()
 
-    spark_job = spark_operator_join_and_transform_to_sentiment()
+    spark_job = spark_operator_join_and_transform_to_sentiment
 
     mapped_groups = distributed_node.expand(urls=chunkify_task)
 
