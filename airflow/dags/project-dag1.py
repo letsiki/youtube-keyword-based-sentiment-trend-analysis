@@ -525,6 +525,7 @@ with DAG(
     schedule="59 23 * * *",
     catchup=False,
     max_active_runs=1,
+    default_args={"retries": 0},
     params={
         "worker_nr": Param(9, type="integer"),
         "debug": Param(False, "boolean"),

@@ -1,0 +1,9 @@
+Just write 
+
+docker compose up
+
+and everything will be taken care of the yaml file
+
+The script returns a third table named comments_with_emotion (not a very good name
+should you want to change it, go to the last line of code and change this
+table="comments_with_emotion")

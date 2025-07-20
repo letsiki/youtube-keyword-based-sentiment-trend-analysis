@@ -1,0 +1,49 @@
+CREATE TABLE IF NOT EXISTS text_from_audio (
+    video_id TEXT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    uploader VARCHAR(128) NOT NULL,
+    "description" TEXT NOT NULL,
+    view_count INTEGER NOT NULL,
+    upload_date DATE NOT NULL,
+    text_field TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS comments (
+    id SERIAL PRIMARY KEY,
+    video_id TEXT NOT NULL,
+    inserted_at DATE NOT NULL,
+    author TEXT NOT NULL,
+    comment TEXT NOT NULL,
+    published_at TEXT NOT NULL
+);
+
+-- Dummy data for text_from_audio
+INSERT INTO text_from_audio (video_id, title, uploader, description, view_count, upload_date, text_field)
+VALUES
+('vid101', 'Iran-Israel Tensions: What Sparked It?', 'GlobalReport', 'An in-depth report on the origins of the current Iran-Israel conflict.', 134200, '2025-07-13',
+'The latest escalation between Iran and Israel began with a drone strike attributed to Israeli forces on Iranian targets in Syria. Iran responded with threats and mobilized proxy militias across the region. Israel, citing national security, launched further airstrikes. The international community has urged restraint, fearing the conflict could draw in neighboring countries. Sanctions, cyberattacks, and military actions have intensified. Analysts warn that without diplomatic intervention, a full-scale war is possible. The US has signaled support for Israel while urging de-escalation. Meanwhile, civilians in both nations remain on edge, facing the psychological toll of this prolonged geopolitical feud.'),
+('vid102', 'Is War Coming? Iran and Israel Face Off', 'MiddleEastNews', 'A closer look at the military and political stakes in the Iran-Israel crisis.', 98230, '2025-07-12',
+'As Iran and Israel trade threats and military blows, global powers are closely watching. Israel accuses Iran of orchestrating attacks through proxies like Hezbollah, while Iran denies direct involvement but vows retaliation. The Strait of Hormuz and Golan Heights are flashpoints. Tensions rise further as Israel boosts its missile defense and Iran conducts military drills. The conflict reflects deep-rooted ideological, religious, and strategic differences. Analysts argue that without urgent diplomacy, regional stability is at risk. Media outlets report growing fear among border communities. World leaders push for ceasefires, but mistrust between the two nations remains a major obstacle.'),
+('vid103', 'Timeline of Iran-Israel Conflict in 2025', 'CrisisChronicle', 'A chronological video showing the events between Iran and Israel this year.', 75400, '2025-07-11',
+'2025 has seen a rapid deterioration of Iran-Israel relations. It began with cyberattacks targeting infrastructure, escalating into physical strikes. Iran-backed militias launched rocket attacks on Israeli border towns. Israel retaliated with precision airstrikes. Diplomatic channels failed as talks in Geneva collapsed. Protesters in Tehran and Tel Aviv demand action and peace respectively. Oil prices surged amid fears of a regional war. The UN has called emergency meetings. Russia and China express concern, urging both nations to return to the negotiating table. Despite mounting pressure, both sides refuse to yield, each blaming the other for the bloodshed and chaos.'),
+('vid104', 'Inside the Proxy War: Iran vs. Israel', 'WarDecoded', 'Exploring how Iran and Israel fight through regional proxies.', 64000, '2025-07-10',
+'Iran and Israel rarely engage in direct combat but fight each other through a network of proxies. Hezbollah in Lebanon and various militias in Iraq and Syria act as Iran’s regional arms. Israel, in turn, conducts covert operations, sabotage, and targeted killings. The recent drone attack in Damascus intensified the shadow war. Intelligence sources claim that Iranian operatives have expanded activity near the Israeli border. These indirect confrontations risk drawing other nations into conflict. Experts warn the proxy war might spiral into a direct one. Civilians caught in the crossfire bear the highest cost. A peaceful resolution seems distant.'),
+('vid105', 'What’s at Stake in Iran-Israel Conflict?', 'GeoFocus', 'Analysis of the broader implications of the Iran-Israel standoff.', 89250, '2025-07-09',
+'Beyond military confrontations, the Iran-Israel conflict has significant regional and global implications. A war could disrupt oil exports, impact global markets, and destabilize neighboring countries. The ideological divide—Sunni vs. Shia, democracy vs. theocracy—compounds the tensions. Israel fears Iran’s nuclear ambitions, while Iran decries Israeli occupation and Western alliances. The situation affects not only military alliances but also humanitarian conditions. Thousands have been displaced, and international NGOs face access restrictions. The Biden administration seeks to balance support for Israel with calls for peace. Without compromise, this standoff could become the Middle East’s next major crisis.')
+;
+
+
+
+-- Updated dummy data for comments on Iran-Israel conflict
+INSERT INTO comments (video_id, inserted_at, author, comment, published_at)
+VALUES
+('vid101', '2025-07-14', 'james_p', 'Very informative video. Hoping for peace soon.', '2025-07-14T08:15:00'),
+('vid101', '2025-07-14', 'sara_uk', 'It’s scary how fast things are escalating.', '2025-07-14T09:42:00'),
+('vid102', '2025-07-13', 'mehdi_r', 'Iran is defending itself. Context matters!', '2025-07-13T11:30:00'),
+('vid102', '2025-07-13', 'avi_b', 'Israel has every right to protect its borders.', '2025-07-13T12:05:00'),
+('vid103', '2025-07-12', 'historybuff', 'This timeline helped me understand what’s going on.', '2025-07-12T15:20:00'),
+('vid103', '2025-07-12', 'nina_r', 'Too many innocent people suffering.', '2025-07-12T16:40:00'),
+('vid104', '2025-07-11', 'mark_d', 'Proxy wars are dangerous and unpredictable.', '2025-07-11T10:10:00'),
+('vid104', '2025-07-11', 'yasmin_m', 'Good breakdown of the militia networks.', '2025-07-11T11:35:00'),
+('vid105', '2025-07-10', 'leo2025', 'Excellent insight into the economic risks.', '2025-07-10T09:55:00'),
+('vid105', '2025-07-10', 'dimitris_g', 'The world needs more diplomacy, not war.', '2025-07-10T10:45:00');
