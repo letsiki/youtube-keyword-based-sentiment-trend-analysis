@@ -57,7 +57,7 @@ def create_chunks_out_of_urls(**context):
     split urls into chunks, to facilitate parallel processing
     """
     n_chunks = context["params"]["worker_nr"]
-    url_list = context["ti"].xcom_pull(task_ids="scraping.scraper_task")
+    url_list = context["ti"].xcom_pull(task_ids="scraping.video_filter")
     avg = ceil(len(url_list) / n_chunks)
     chunked_urls = [
         [u for u in url_list][i * avg : (i + 1) * avg]
@@ -199,7 +199,7 @@ def text_and_metadata_to_db(**context):
                 print(f"[WARN] Could not delete {file}: {e}")
 
 
-@task
+@task(trigger_rule=TriggerRule.ONE_SUCCESS)
 def spark_operator_join_and_transform_to_sentiment(**context):
     pass
 
@@ -373,6 +373,8 @@ def comment_fetching(urls):
     fetch_comments = DockerOperator(
         task_id="fetch_comments",
         image="comment-scraper-2:latest",
+        cpus=1.0,
+        mem_limit="1g",
         retries=0,
         auto_remove="never",
         tty=True,
@@ -439,10 +441,28 @@ def scraping():
         container_name="scraper_container",
     )
 
+    video_filter = DockerOperator(
+        task_id="video_filter",
+        image="video_filter:latest",
+        auto_remove="never",
+        retries=0,
+        tty=True,
+        mount_tmp_dir=False,
+        docker_url="unix://var/run/docker.sock",
+        environment={"LOGICAL_DATE": "{{ ds | replace('-', '') }}"},
+        do_xcom_push=True,
+        # command="{% if params.debug %}--debug{% endif %}",
+        command="--urls {{ ti.xcom_pull(task_ids='scraping.scraper_task') | join(' ') }}",
+        retrieve_output=True,
+        retrieve_output_path="/airflow/xcom/return.pkl",
+        container_name="video_filter",
+    )
+
     (
         check_postgres_conn()
         >> create_tables_if_not_exist()
         >> scraper_task
+        >> video_filter
     )
 
 
@@ -506,7 +526,7 @@ with DAG(
     catchup=False,
     max_active_runs=1,
     params={
-        "worker_nr": Param(6, type="integer"),
+        "worker_nr": Param(9, type="integer"),
         "debug": Param(False, "boolean"),
         "max_results_per_page": Param(500, "integer"),
         "keywords": Param(["CNN Israel", "BBC Israel"], "list"),
@@ -531,7 +551,7 @@ with DAG(
     cleanup = BashOperator(
         trigger_rule=TriggerRule.ALL_DONE,
         task_id="cleanup",
-        bash_command="docker rm -f scraper_container whisper_container || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && docker ps -a --filter 'name=comment-scraper2' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
+        bash_command="docker rm -f scraper_container whisper_container video_filter || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && docker ps -a --filter 'name=comment-scraper2' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
     )
 
     chunkify_task = create_chunks_out_of_urls()
