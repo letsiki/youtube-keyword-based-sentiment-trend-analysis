@@ -339,11 +339,11 @@ def mp3_fetching(urls):
         task_id="mp3_getter_task",
         image="mp3-getter:latest",
         retries=0,
-        auto_remove="never",
+        auto_remove="force",
         tty=True,
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
-        container_name="mp3_getter_{{ ti.map_index }}",
+        # container_name="mp3_getter_{{ ti.map_index }}",
         command="--urls {{ ti.xcom_pull(task_ids='distributed_node.entry') | join(' ') }}",
         environment={"LOGICAL_DATE": "{{ ds | replace('-', '') }}"},
         mounts=[
@@ -374,11 +374,11 @@ def comment_fetching(urls):
         task_id="fetch_comments",
         image="comment-scraper-2:latest",
         retries=0,
-        auto_remove="never",
+        auto_remove="force",
         tty=True,
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
-        container_name="comment-scraper2_{{ ti.map_index }}",
+        # container_name="comment-scraper2_{{ ti.map_index }}",
         command="--urls {{ ti.xcom_pull(task_ids='distributed_node.entry') | join(' ') }}",
         # environment={"LOGICAL_DATE": "{{ ds | replace('-', '') }}"},
         mounts=[
@@ -427,7 +427,7 @@ def scraping():
     scraper_task = DockerOperator(
         task_id="scraper_task",
         image="url-scraper:latest",
-        auto_remove="never",
+        auto_remove="force",
         retries=0,
         tty=True,
         mount_tmp_dir=False,
@@ -436,13 +436,13 @@ def scraping():
         command="{% if params.debug %}--debug{% endif %}",
         retrieve_output=True,
         retrieve_output_path="/airflow/xcom/return.pkl",
-        container_name="scraper_container",
+        # container_name="scraper_container",
     )
 
     video_filter = DockerOperator(
         task_id="video_filter",
         image="video_filter:latest",
-        auto_remove="never",
+        auto_remove="force",
         retries=0,
         tty=True,
         mount_tmp_dir=False,
@@ -450,10 +450,10 @@ def scraping():
         environment={"LOGICAL_DATE": "{{ ds | replace('-', '') }}"},
         do_xcom_push=True,
         # command="{% if params.debug %}--debug{% endif %}",
-        command="--urls {{ ti.xcom_pull(task_ids='scraping.scraper_task') | join(' ') }}",
+        command="--urls {{ ti.xcom_pull(task_ids='scraping.scraper_task') | join(' ') }} {% if params.debug %}--debug{% endif %}",
         retrieve_output=True,
         retrieve_output_path="/airflow/xcom/return.pkl",
-        container_name="video_filter",
+        # container_name="video_filter",
     )
 
     (
@@ -480,20 +480,20 @@ def audio_to_text():
         op_kwargs={"folder_path": "/opt/airflow/mp3"},
         poke_interval=5,
         soft_fail=True,
-        timeout=300,
+        timeout=3600,
         mode="poke",
     )
 
     audio_transcriber_task = DockerOperator(
         task_id="audio_transcriber",
         image="transcribe-many:latest",
-        auto_remove="never",
+        auto_remove="force",
         retries=0,
         tty=True,
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
         command="--model tiny --urls {{ ti.xcom_pull(task_ids='scraping.scraper_task') | join(' ') }} --exclude  {{ ti.xcom_pull(task_ids='scraping.create_tables_if_not_exist') | join(' ') }}",
-        container_name="whisper_container",
+        # container_name="whisper_container",
         mounts=[
             Mount(
                 source="/home/alex/Projects/bbd_project/sample-project-aa/mp3",
@@ -525,10 +525,10 @@ with DAG(
     max_active_runs=1,
     default_args={"retries": 0},
     params={
-        "worker_nr": Param(1, type="integer"),
+        "worker_nr": Param(4, type="integer"),
         "debug": Param(False, "boolean"),
         "max_results_per_page": Param(500, "integer"),
-        "keywords": Param(["CNN Israel", "BBC Israel"], "list"),
+        "keywords": Param(["Israel", "Palestine"], "list"),
     },
     tags=["bblue-project"],
 ) as dag:
@@ -550,22 +550,21 @@ with DAG(
     spark_operator_join_and_transform_to_sentiment = DockerOperator(
         task_id="spark_job",
         image="spark_job:latest",
-        auto_remove="never",
+        auto_remove="force",
         retries=0,
         tty=True,
         mount_tmp_dir=False,
-        trigger_rule=TriggerRule.ONE_SUCCESS,
         docker_url="unix://var/run/docker.sock",
         # environment={"LOGICAL_DATE": "{{ ds | replace('-', '') }}"},
         network_mode="airflow_default",
-        container_name="spark_job",
+        # container_name="spark_job",
     )
 
     # removes all containers (volumes are kept)
     cleanup = BashOperator(
         trigger_rule=TriggerRule.ALL_DONE,
         task_id="cleanup",
-        bash_command="docker rm -f scraper_container whisper_container video_filter spark_job || true && docker ps -a --filter 'name=mp3_getter' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && docker ps -a --filter 'name=comment-scraper2' | awk 'NR>1 {print $1}' | xargs -r docker rm -f || true && rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
+        bash_command="rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
     )
 
     chunkify_task = create_chunks_out_of_urls()
@@ -589,7 +588,7 @@ with DAG(
 
     (scraping_group >> audio_to_text_group >> spark_job)
 
-    [spark_job, audio_to_text_group] >> cleanup
+    [spark_job, audio_to_text_group, mapped_groups] >> cleanup
 
     (
         spark_job

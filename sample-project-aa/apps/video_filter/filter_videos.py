@@ -9,7 +9,22 @@ from urllib.parse import quote, urlparse, parse_qs
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--urls", type=str, nargs="*", default=[])
+parser.add_argument("--debug", action="store_true")
 args = parser.parse_args()
+
+if args.debug:
+    video_ids = args.urls
+    os.makedirs("/airflow/xcom", exist_ok=True)
+    with open("/airflow/xcom/return.pkl", "wb") as f:
+        pickle.dump(video_ids, f)
+    exit()
+# temporarily removing filtering
+else:
+    video_ids = args.urls
+    os.makedirs("/airflow/xcom", exist_ok=True)
+    with open("/airflow/xcom/return.pkl", "wb") as f:
+        pickle.dump(video_ids, f)
+    exit()
 
 urls = [url[1:] for url in args.urls]
 filtered_urls = []

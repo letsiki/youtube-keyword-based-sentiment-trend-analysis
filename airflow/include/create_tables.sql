@@ -17,3 +17,5 @@ CREATE TABLE IF NOT EXISTS comments_table (
     comment TEXT NOT NULL,
     published_at VARCHAR(128) NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS unique_comment ON comments_table (video_id, author, comment);

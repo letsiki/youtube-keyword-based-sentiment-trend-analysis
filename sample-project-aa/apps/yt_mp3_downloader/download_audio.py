@@ -53,11 +53,11 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             video_date = info_dict.get("upload_date", None)
             print(f"video date is {video_date}")
             if (
-                video_date == string_date
-                and info_dict.get("duration")
-                and info_dict.get("duration") <= 1500
-                and info_dict.get("language")
-                and info_dict["language"] == "en"
+                # video_date == string_date
+                info_dict.get("duration")
+                and info_dict.get("duration") <= 3600
+                # and info_dict.get("language")
+                # and info_dict["language"] == "en"
             ):
                 ydl.download(url)
                 metadata = {

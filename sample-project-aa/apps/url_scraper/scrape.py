@@ -15,15 +15,90 @@ from selenium.common.exceptions import ElementClickInterceptedException
 
 
 # Config
-QUERY_KEYWORDS = ["CNN Israel", "BBC Israel"]
-N_RESULTS_PER_QUERY = 3
+QUERY_KEYWORDS = ["Israel", "Palestine"]
+# N_RESULTS_PER_QUERY = 3
 HEADLESS = True
 FIREFOX_BINARY = os.getenv(
     "FIREFOX_BIN", "/snap/firefox/current/usr/lib/firefox/firefox"
 )
 SEARCH_URL_TEMPLATE = "https://www.youtube.com/results?search_query={}"
 WAIT_TIME = 15
-MAX_VIDEOS_PER_QUERY = 50
+MAX_VIDEOS_PER_QUERY = 500
+
+debug_videos = [
+    "vJzz0NOFetVM",
+    "v6LfdSnic1JI",
+    "vwn3o4FnRqGw",
+    "vbdwkLWNoj7s",
+    "vLoyYF796OGo",
+    "vp28R2fUb_zE",
+    "v1X_KdkoGxSs",
+    "vy2A-CnYyHV8",
+    "v4_2gXLj3o10",
+    "veYNGpcaUwBI",
+    "vgfl5o6vLeto",
+    "vSf19E1ZZAGQ",
+    "vV_GU4TVq2d8",
+    "vm19F4IHTVGc",
+    "vbKbJtp2iqgI",
+    "vtN9dNGgc44Q",
+    "vYNauolfUVWg",
+    "vVzlY_Wkj8dc",
+    "v_skGtOM_XT0",
+    "vCnltF8o2iLo",
+    "vBAujeFizTi4",
+    "vfJjhmZJpntY",
+    "vyy3ATmzyeIY",
+    "vDnFO6e1JQpE",
+    "vPQrD3EnKeaQ",
+    "vzE8GCX1w3ys",
+    "vN_MO03yBxfA",
+    "v4J9npr3fdk4",
+    "vJPJmj2Y8jrY",
+    "vyq3hGbW7D5M",
+    "v3Dh41x-vcrU",
+    "vXZDFvjsLxWM",
+    "vE_bzbu68U24",
+    "vNI6o2ytLaCQ",
+    "vysdhMsaG17A",
+    "vCjxH_aiBfBs",
+    "vgFa4MwSDg-k",
+    "v5iRky7_LBr0",
+    "v9IjGK4kHZME",
+    "vwpKitfORhsM",
+    "v6O6BZ5bWa5g",
+    "vwldcbB7lwxQ",
+    "vbce-IkH3wBE",
+    "v-RscwolhIYo",
+    "vF1H1SA0F_wY",
+    "vPD0ZqGe591I",
+    "vORDSpvg-ms4",
+    "vx0LpF9aPZJ0",
+    "v8qsaUU3ha90",
+    "vCmEWZ8Pl7Iw",
+    "vd2yMpk59_Bo",
+    "vhzywF0xnjtQ",
+    "vj2FVbCZCABQ",
+    "vEVnL9wT90FM",
+    "vNHoFXArEbG4",
+    "vDtYkRM_pbXE",
+    "v_B_5ZSjP0OE",
+    "vi6MPJX4pZN8",
+    "vvEs8KnY9UHA",
+    "v8D2yAFZbekY",
+    "vM7z2sUaRGlE",
+    "vYtKDm979cTY",
+    "vk9M0HKH9DUc",
+    "vWPRtfsJULVs",
+    "vTZZiW1lDq_E",
+    "v_Jj8vne0ca0",
+    "vVOtpyF74oGI",
+    "viqq3rZh6mnE",
+    "v-hv3y4QM-jM",
+    "vdbqPsRSSzFY",
+    "v6jI_kBxLp2A",
+    "vZ2hDyzQK1FU",
+]
 
 
 def scrape():
@@ -35,6 +110,15 @@ def scrape():
     # arg_parser.add_argument("--head", action="store_true")
     args = arg_parser.parse_args()
 
+    if args.debug:
+
+        all_video_ids = debug_videos
+        os.makedirs("/airflow/xcom", exist_ok=True)
+        with open("/airflow/xcom/return.pkl", "wb") as f:
+            import pickle
+
+            pickle.dump(list(all_video_ids), f)
+            return
     all_video_ids = set()
 
     # Firefox options
@@ -112,9 +196,10 @@ def scrape():
                     )
                 )
                 if (
-                    current_count >= MAX_VIDEOS_PER_QUERY
-                    if not args.debug
-                    else 10
+                    current_count
+                    >= MAX_VIDEOS_PER_QUERY
+                    # if not args.debug
+                    # else 10
                 ):
                     break
                 current_scroll_height = driver.execute_script(
@@ -156,6 +241,7 @@ def scrape():
             if isinstance(video_id, str)
         ]
     )
+
     os.makedirs("/airflow/xcom", exist_ok=True)
     with open("/airflow/xcom/return.pkl", "wb") as f:
         import pickle

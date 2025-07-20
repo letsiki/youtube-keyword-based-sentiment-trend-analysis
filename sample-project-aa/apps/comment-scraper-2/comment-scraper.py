@@ -31,8 +31,7 @@ def load_cookies_from_file(filepath: str, domain: str):
     return cookies
 
 
-def scrape_youtube_comments(video_id, max_comments=90):
-    video_url = youtube_video_template + video_id[1:]
+def scrape_youtube_comments(video_url, max_comments=60):
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -46,8 +45,10 @@ def scrape_youtube_comments(video_id, max_comments=90):
             )
             context.add_cookies(cookies)
             # --------------------------------------------------------------
-
-            print(f"Navigating to {video_url}...")
+            video_url = (
+                "https://www.youtube.com/watch?v=" + video_url[1:]
+            )
+            print(video_url)
             page = browser.new_page()
             page.goto(video_url, timeout=60000)
 
@@ -86,11 +87,11 @@ def scrape_youtube_comments(video_id, max_comments=90):
                 if author and text and timestamp:
                     collected_comments.append(
                         {
-                            # "video_id": video_url.split("v=")[-1].split(
-                            #     "&"
-                            # )[
-                            #     0
-                            # ],  # Extract video ID more robustly
+                            "video_id": video_url.split("v=")[-1].split(
+                                "&"
+                            )[
+                                0
+                            ],  # Extract video ID more robustly
                             "author": author.inner_text().strip(),
                             "comment": text.inner_text().strip(),
                             "published_at": timestamp.inner_text().strip(),
