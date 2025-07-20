@@ -35,6 +35,9 @@ def process_url(u):
                 full_url, download=False, process=False
             )
             if not info or info.get("upload_date") != string_date:
+                print(
+                    f"{full_url} was uploaded in {info.get("upload_date")}, filtering out"
+                )
                 return None
 
             # Second: full metadata check
@@ -58,9 +61,11 @@ def process_url(u):
 
 start = perf_counter()
 results = []
-for url in urls:
+for i, url in enumerate(urls):
+    print(f"processing video {i + 1} out of {len(urls)}")
     r = process_url(url)
     if r:
+        print(f"{url} was added")
         results.append(r)
 
 filtered_urls = results

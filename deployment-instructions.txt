@@ -8,9 +8,12 @@
 6. To do so use the command docker build -t <image_name> .
 7. Ο χρήστης τρέχει την εντολή getent group docker στο terminal, έπειτα πηγαίνει στο αρχείο .env και βάζει το αριθμό που έβαλε στην μεταβλητή DOCKER_GID
 8. Bring the database up by navigating to sample-project-aa/db and running docker compose up -d
-8. To connect to the db use user:airflow password:airflow db:project_data
-8. To connect to airflow now navigate to ip:8080 and use u:airflow p:airflow
-9. trigger the dag called project-dag1
+9. To connect to the db use user:airflow password:airflow db:project_data
+10. To connect to airflow now navigate to ip:8080 and use u:airflow p:airflow
+11. trigger the dag called project-dag1
 
 config:
 you can use the parameters when triggering to adjust nr_workers and debug mode. The rest of the parameters are not functioning yet.
+
+IMPORTANT:
+αν δεν κανει successful cleanup(ενα απο τα τελευταια tasks), μην ξεκινησεις νεο run... Θα σκασει.
