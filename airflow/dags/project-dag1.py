@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import json
+import hashlib
 from datetime import datetime
 from pathlib import Path
 from math import ceil
@@ -286,6 +287,9 @@ def comm_json_to_list(path: Path | str) -> list[tuple]:
                     vid_dict["author"][1:],
                     vid_dict["comment"],
                     vid_dict["published_at"],
+                    hashlib.md5(
+                        vid_dict["comment"].encode("utf-8")
+                    ).hexdigest(),
                 )
             )
     return data

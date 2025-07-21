@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS comments_table (
     inserted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     author VARCHAR(128) NOT NULL,
     comment TEXT NOT NULL,
-    published_at VARCHAR(128) NOT NULL
+    published_at VARCHAR(128) NOT NULL,
+    comment_hash TEXT GENERATED ALWAYS AS (md5(comment)) STORED,
+    UNIQUE (video_id, author, comment_hash)
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS unique_comment ON comments_table (video_id, author, comment);
