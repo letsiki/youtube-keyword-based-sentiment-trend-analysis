@@ -15,9 +15,17 @@ from pyspark.sql.types import StringType, IntegerType, TimestampType
 logging.basicConfig(level=logging.ERROR)
 
 # Start Spark
-spark = SparkSession.builder.appName(
-    "EmotionAnalysisAndSummarization"
-).getOrCreate()
+spark = (
+    SparkSession.builder.appName("EmotionAnalysisAndSummarization")
+    .master("local[*]")  # Use all cores
+    .config("spark.executor.memory", "4g")  # Raise executor memory
+    .config("spark.driver.memory", "4g")  # Raise driver memory
+    .config("spark.default.parallelism", "16")  # More parallel tasks
+    .config(
+        "spark.sql.shuffle.partitions", "16"
+    )  # Fewer, larger partitions for small datasets
+    .getOrCreate()
+)
 
 # JDBC connection
 jdbc_url = "jdbc:postgresql://data_warehouse:5432/project_data"
