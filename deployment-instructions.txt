@@ -6,6 +6,27 @@
 4. locate to_text_conversion, url_scraper, yt_mp3_downloader, table-join-and-emotional-analysis, video_filter  directories
 5. navigate to each and build the images giving them the names transcribe-many:latest, url-scraper:latest,  mp3-getter:latest, comment-scraper2:latest, spark_job:latest, video_filter:latest respectively
 6. To do so use the command docker build -t <image_name> .
+6_5. You must create local folders for the temporary files
+
+├── json
+│   ├── comments
+│   │   ├── -0F7iua-37Y.json (example)
+│   └── video
+│       ├── 07Zoc5fgoOA.json (example)
+├── mp3
+│   ├── 07Zoc5fgoOA.mp3 (example)
+│
+├── text
+│   ├── 0iKObc8sCMg.txt (example)
+├
+└
+I would recommend creating a 'data' folder and then create the folders above inside of it.
+after doing that you must adjust the 5 Mounts in the project-dag1.py file
+To do this easily, search for 'Mount(' and you should find 5 results (dont forget opening parenthesis)
+THen ONLY change the source parameter to match the local folder you created
+Note: do not mistake json/video with json/comments, they are different.
+
+
 7. Ο χρήστης τρέχει την εντολή getent group docker στο terminal, έπειτα πηγαίνει στο αρχείο .env και βάζει το αριθμό που έβαλε στην μεταβλητή DOCKER_GID
 8. Bring the database up by navigating to sample-project-aa/db and running docker compose up -d
 9. To connect to the db use user:airflow password:airflow db:project_data
@@ -13,7 +34,8 @@
 11. trigger the dag called project-dag1
 
 config:
-you can use the parameters when triggering to adjust nr_workers and debug mode. The rest of the parameters are not functioning yet.
+you can use the parameters when triggering to adjust nr_workers and debug mode AND search keywords
 
 IMPORTANT:
-αν δεν κανει successful cleanup(ενα απο τα τελευταια tasks), μην ξεκινησεις νεο run... Θα σκασει.
+ας μη μπλεκουμε διαφορετικα keywords με την ιδια database, αν θες να πειραματιστεις με καινουργια κανε docker compose down -v στη database πρωτα (και παλι up)
+αν θες να εμπλουτισεις ενα run με περισσοτερα αποτελεσματα μπορεισ να το ξανατρεξεις αφοβα. Τα duplicates δε θα επεξεργαστουν οποτε και πολυ πιο γρηγορα θα παει, και τα data μας δε θα χαλασουν
