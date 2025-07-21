@@ -2,11 +2,14 @@
 2. navigate to airflow directory and execute the following
     docker compose up airflow-init
     docker compose up -d
-3. navigate to sample-project-aa
-4. locate to_text_conversion, url_scraper, yt_mp3_downloader, table-join-and-emotional-analysis, video_filter  directories
-5. navigate to each and build the images giving them the names transcribe-many:latest, url-scraper:latest,  mp3-getter:latest, comment-scraper2:latest, spark_job:latest, video_filter:latest respectively
-6. To do so use the command docker build -t <image_name> .
-6_5. You must create local folders for the temporary files
+3. Bring the database up by navigating to sample-project-aa/db and running docker compose up -d
+4. To connect to the db use user:airflow password:airflow db:project_data
+5. adjust spark to the correct database host
+6. navigate to sample-project-aa
+7. locate to_text_conversion, url_scraper, yt_mp3_downloader, table-join-and-emotional-analysis, video_filter  directories
+8. navigate to each and build the images giving them the names transcribe-many:latest, url-scraper:latest,  mp3-getter:latest, comment-scraper2:latest, spark_job:latest, video_filter:latest respectively
+9. To do so use the command docker build -t <image_name> .
+10_5. You must create local folders for the temporary files
 
 ├── json
 │   ├── comments
@@ -26,16 +29,16 @@ To do this easily, search for 'Mount(' and you should find 5 results (dont forge
 THen ONLY change the source parameter to match the local folder you created
 Note: do not mistake json/video with json/comments, they are different.
 
+11. In the cleanup task (towards the end) we are deleting all mp3, json, and text files. Make sure the directories are correct 
+11. Ο χρήστης τρέχει την εντολή getent group docker στο terminal, έπειτα πηγαίνει στο αρχείο .env και βάζει το αριθμό που έβαλε στην μεταβλητή DOCKER_GID
 
-7. Ο χρήστης τρέχει την εντολή getent group docker στο terminal, έπειτα πηγαίνει στο αρχείο .env και βάζει το αριθμό που έβαλε στην μεταβλητή DOCKER_GID
-8. Bring the database up by navigating to sample-project-aa/db and running docker compose up -d
-9. To connect to the db use user:airflow password:airflow db:project_data
-10. To connect to airflow now navigate to ip:8080 and use u:airflow p:airflow
-11. trigger the dag called project-dag1
+12. To connect to airflow now navigate to ip:8080 and use u:airflow p:airflow
+13. trigger the dag called project-dag1
 
 config:
 you can use the parameters when triggering to adjust nr_workers and debug mode AND search keywords
 
 IMPORTANT:
-ας μη μπλεκουμε διαφορετικα keywords με την ιδια database, αν θες να πειραματιστεις με καινουργια κανε docker compose down -v στη database πρωτα (και παλι up)
-αν θες να εμπλουτισεις ενα run με περισσοτερα αποτελεσματα μπορεισ να το ξανατρεξεις αφοβα. Τα duplicates δε θα επεξεργαστουν οποτε και πολυ πιο γρηγορα θα παει, και τα data μας δε θα χαλασουν
+- ας μη μπλεκουμε διαφορετικα keywords με την ιδια database, αν θες να πειραματιστεις με καινουργια κανε docker compose down -v στη database πρωτα (και παλι up)
+- αν θες να εμπλουτισεις ενα run με περισσοτερα αποτελεσματα μπορεισ να το ξανατρεξεις αφοβα. Τα duplicates δε θα επεξεργαστουν οποτε και πολυ πιο γρηγορα θα παει, και τα data μας δε θα χαλασουν
+- Το πρωτο run θα παρει ωρες, επειδη αργει πολυ το transcribe. Στα επομενα θα σαι οκ (οπως εξηγησα και πιο πανω)
