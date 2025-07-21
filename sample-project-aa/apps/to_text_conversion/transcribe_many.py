@@ -89,7 +89,10 @@ while True:
 
         print(f"Αποθηκεύτηκε: {output_file}")
 
-        os.remove(audio_path)
+        try:
+            os.remove(audio_path)
+        except:
+            pass
 print("Ολοκληρώθηκε η απομαγνητοφώνηση/μετάφραση όλων των αρχείων.")
 
 # os.makedirs("/airflow/xcom", exist_ok=True)

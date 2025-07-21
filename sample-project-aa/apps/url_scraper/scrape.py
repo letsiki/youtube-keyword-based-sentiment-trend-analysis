@@ -98,7 +98,7 @@ debug_videos = [
     "vdbqPsRSSzFY",
     "v6jI_kBxLp2A",
     "vZ2hDyzQK1FU",
-]
+][:20]
 
 
 def scrape():
@@ -107,6 +107,7 @@ def scrape():
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--debug", action="store_true")
+    arg_parser.add_argument("--kw", nargs="+", default=[])
     # arg_parser.add_argument("--head", action="store_true")
     args = arg_parser.parse_args()
 
@@ -132,10 +133,11 @@ def scrape():
 
     try:
         search_urls = [
-            SEARCH_URL_TEMPLATE.format(quote(q)) for q in QUERY_KEYWORDS
+            SEARCH_URL_TEMPLATE.format(quote(q)) for q in args.kw
         ]
 
         for search_url in search_urls:
+            print(f"Looking for videos in {search_url}")
             driver.get(search_url)
             wait = WebDriverWait(driver, WAIT_TIME)
 

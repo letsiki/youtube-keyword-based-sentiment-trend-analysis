@@ -1,7 +1,8 @@
 from pathlib import Path
 import os
 import json
-import hashlib
+
+# import hashlib
 from datetime import datetime
 from pathlib import Path
 from math import ceil
@@ -287,9 +288,9 @@ def comm_json_to_list(path: Path | str) -> list[tuple]:
                     vid_dict["author"][1:],
                     vid_dict["comment"],
                     vid_dict["published_at"],
-                    hashlib.md5(
-                        vid_dict["comment"].encode("utf-8")
-                    ).hexdigest(),
+                    # hashlib.md5(
+                    #     vid_dict["comment"].encode("utf-8")
+                    # ).hexdigest(),
                 )
             )
     return data
@@ -437,7 +438,7 @@ def scraping():
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
         do_xcom_push=True,
-        command="{% if params.debug %}--debug{% endif %}",
+        command="--kw {{params.keywords | join(' ')}} {% if params.debug %}--debug{% endif %}",
         retrieve_output=True,
         retrieve_output_path="/airflow/xcom/return.pkl",
         # container_name="scraper_container",
