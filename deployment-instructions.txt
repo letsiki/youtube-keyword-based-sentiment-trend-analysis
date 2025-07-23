@@ -48,3 +48,7 @@ run this
 docker rm -f $(docker ps -aq --filter "ancestor=comment-scraper-2:latest" --filter "ancestor=mp3-getter:latest" --filter "ancestor=transcribe-many:latest")
 
 it will remove all containers
+
+to backup database 
+docker exec data_warehouse pg_dump -U airflow -d project_data | gzip > backup.sql.gz
+
