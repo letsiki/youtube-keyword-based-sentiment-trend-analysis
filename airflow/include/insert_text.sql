@@ -1,4 +1,4 @@
-INSERT INTO text_from_audio (video_id, title, uploader, "description", view_count, upload_date, text_field)
+INSERT INTO netanyahu_plus_gaza_text_from_audio (video_id, title, uploader, "description", view_count, upload_date, text_field)
 VALUES (%s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (video_id) 
 DO UPDATE 

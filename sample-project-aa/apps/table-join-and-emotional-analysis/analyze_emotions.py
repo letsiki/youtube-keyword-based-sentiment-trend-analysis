@@ -37,10 +37,14 @@ properties = {
 
 # Load tables
 comments_df = spark.read.jdbc(
-    url=jdbc_url, table="comments_table", properties=properties
+    url=jdbc_url,
+    table="netanyahu_plus_gaza_comments_table",
+    properties=properties,
 )
 text_df = spark.read.jdbc(
-    url=jdbc_url, table="text_from_audio", properties=properties
+    url=jdbc_url,
+    table="netanyahu_plus_gaza_text_from_audio",
+    properties=properties,
 )
 
 
@@ -139,7 +143,7 @@ final_df = (
 # Register to new table
 final_df.write.jdbc(
     url=jdbc_url,
-    table="text_with_summary_and_comments_with_emotion",
+    table="netanyahu_plus_gaza_text_with_summary_and_comments_with_emotion",
     mode="overwrite",
     properties=properties,
 )

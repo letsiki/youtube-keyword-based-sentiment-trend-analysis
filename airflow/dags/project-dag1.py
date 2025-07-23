@@ -45,7 +45,7 @@ def create_tables_if_not_exist():
         with conn.cursor() as cursor:
             cursor.execute(sql)
     existing_texts = hook.get_first(
-        "SELECT array_agg(video_id) FROM text_from_audio;"
+        "SELECT array_agg(video_id) FROM netanyahu_plus_gaza_text_from_audio;"
     )
     if None not in existing_texts:
         return ["v" + ex for ex in existing_texts[0]]
@@ -525,7 +525,8 @@ def audio_to_text():
 with DAG(
     dag_id="project-dag",
     start_date=datetime(2025, 6, 1),
-    schedule="59 23 * * *",
+    # schedule="59 23 * * *",
+    schedule=None,
     catchup=False,
     max_active_runs=1,
     default_args={"retries": 0},
