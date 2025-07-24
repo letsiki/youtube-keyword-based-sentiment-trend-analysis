@@ -16,13 +16,25 @@ from pyspark.sql.types import StringType, IntegerType, TimestampType
 logging.basicConfig(level=logging.ERROR)
 
 # Start Spark
-spark = SparkSession.builder \
-    .appName("EmotionAnalysisAndSummarization") \
+spark = (
+    SparkSession.builder.appName("EmotionAnalysisAndSummarization")
+    .master("local[*]")  # Use all cores
+    .config("spark.executor.memory", "4g")  # Raise executor memory
+    .config("spark.driver.memory", "4g")  # Raise driver memory
+    .config("spark.default.parallelism", "16")  # More parallel tasks
+    .config(
+        "spark.sql.shuffle.partitions", "16"
+    )  # Fewer, larger partitions for small datasets
     .getOrCreate()
+)
 
 # JDBC connection
-jdbc_url = "jdbc:postgresql://postgres-db:5432/mydb"
-properties = {"user": "user", "password": "password", "driver": "org.postgresql.Driver"}
+jdbc_url = "jdbc:postgresql://data_warehouse:5432/project_data"
+properties = {
+    "user": "airflow",
+    "password": "airflow",
+    "driver": "org.postgresql.Driver",
+}
 
 # Load tables
 comments_df = spark.read.jdbc(url=jdbc_url, table="comments_table", properties=properties)
@@ -38,7 +50,7 @@ def analyze_emotion(comment):
         
         # Find the dominant emotion
         dominant = max(results, key=lambda x: x['score'])
-        return json.dumps({ "label": dominant["label"], "score": round(dominant["score"], 4) })
+        return json.dumps({ "label": dominant["label"], "score": round(dominant["score"], 4) }).get["label"]
     
     except Exception as e:
         return json.dumps({ "error": str(e) })

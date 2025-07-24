@@ -2,8 +2,10 @@ import json
 import logging
 import dateparser
 from datetime import datetime, time
+from transformers import pipeline
+import re
 
-import text2emotion as te
+
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lex_rank import LexRankSummarizer
@@ -37,23 +39,32 @@ properties = {
 
 # Load tables
 comments_df = spark.read.jdbc(
-    url=jdbc_url,
-    table="netanyahu_minus_gaza_comments_table",
-    properties=properties,
+    url=jdbc_url, table="comments_table", properties=properties
 )
 text_df = spark.read.jdbc(
-    url=jdbc_url,
-    table="netanyahu_minus_gaza_text_from_audio",
-    properties=properties,
+    url=jdbc_url, table="text_from_audio", properties=properties
+)
+
+
+emotion_classifier = pipeline(
+    "text-classification",
+    model="j-hartmann/emotion-english-distilroberta-base",
+    return_all_scores=True,
 )
 
 
 # === UDF analyze emotion ===
 def analyze_emotion(comment):
     try:
-        emotions = te.get_emotion(comment)
-        dominant_emotion = max(emotions, key=emotions.get)
-        return json.dumps(dominant_emotion)
+        # Run the classifier
+        results = emotion_classifier(comment)[
+            0
+        ]  # [0] since pipeline returns a list of lists
+
+        # Find the dominant emotion
+        dominant = max(results, key=lambda x: x["score"])
+        return dominant["label"]
+
     except Exception as e:
         return json.dumps({"error": str(e)})
 
@@ -80,20 +91,25 @@ summary_udf = udf(summarize_text, StringType())
 # emotion_to_number
 def map_emotion_to_number(emotion_str):
     try:
-        if not emotion_str or not isinstance(emotion_str, str):
-            return "Invalid input: not a string"
-        emotion = emotion_str.strip('"')
+        if not isinstance(emotion_str, str):
+            return None  # Spark-friendly
+
+        label = emotion_str.lower()
+
         mapping = {
-            "Happy": 3,
-            "Surprise": 0,
-            "Angry": -3,
-            "Sad": -1,
-            "Fear": -2,
+            "joy": 3,
+            "surprise": 0,
+            "anger": -3,
+            "sadness": -1,
+            "fear": -2,
+            "disgust": -2,
+            "neutral": 0,
         }
-        return mapping.get(emotion, "Not Found")
+
+        return mapping.get(label, None)
     except Exception as e:
         logging.error(f"Exception in map_emotion_to_number: {e}")
-        return str(e)
+        return None
 
 
 emotion_number_udf = udf(map_emotion_to_number, IntegerType())
@@ -106,6 +122,8 @@ def parse_relative_date(published_at, inserted_at):
     try:
         if not isinstance(inserted_at, datetime):
             inserted_at = datetime.combine(inserted_at, time.min)
+
+        published_at = re.sub(r" \(τροποποιήθηκε\)", "", published_at)
 
         parsed_date = dateparser.parse(
             published_at,
@@ -143,7 +161,7 @@ final_df = (
 # Register to new table
 final_df.write.jdbc(
     url=jdbc_url,
-    table="netanyahu_minus_gaza_text_with_summary_and_comments_with_emotion",
+    table="text_with_summary_and_comments_with_emotion",
     mode="overwrite",
     properties=properties,
 )

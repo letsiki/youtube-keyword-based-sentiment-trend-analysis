@@ -45,7 +45,7 @@ def create_tables_if_not_exist():
         with conn.cursor() as cursor:
             cursor.execute(sql)
     existing_texts = hook.get_first(
-        "SELECT array_agg(video_id) FROM netanyahu_minus_gaza_text_from_audio;"
+        "SELECT array_agg(video_id) FROM text_from_audio;"
     )
     if None not in existing_texts:
         return ["v" + ex for ex in existing_texts[0]]
@@ -570,7 +570,7 @@ with DAG(
     cleanup = BashOperator(
         trigger_rule=TriggerRule.ALL_DONE,
         task_id="cleanup",
-        bash_command="rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/*",
+        bash_command="rm -f /opt/airflow/mp3/* && rm -f /opt/airflow/json/video/* && rm -f /opt/airflow/json/comments/* && rm -f /opt/airflow/text/* && docker rm -f $(docker ps -aq --filter 'ancestor=comment-scraper-2:latest' --filter 'ancestor=mp3-getter:latest' --filter 'ancestor=spark_job:latest:latest' --filter 'ancestor=transcribe-many:latest') || true",
     )
 
     chunkify_task = create_chunks_out_of_urls()

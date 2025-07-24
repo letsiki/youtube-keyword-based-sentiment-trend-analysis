@@ -43,7 +43,9 @@ IMPORTANT:
 - αν θες να εμπλουτισεις ενα run με περισσοτερα αποτελεσματα μπορεισ να το ξανατρεξεις αφοβα. Τα duplicates δε θα επεξεργαστουν οποτε και πολυ πιο γρηγορα θα παει, και τα data μας δε θα χαλασουν
 - Το πρωτο run θα παρει ωρες, επειδη αργει πολυ το transcribe. Στα επομενα θα σαι οκ (οπως εξηγησα και πιο πανω)
 
-to stop a run easily
+
+
+to stop a run easily (ignore, now happening automatically)
 run this
 docker rm -f $(docker ps -aq --filter "ancestor=comment-scraper-2:latest" --filter "ancestor=mp3-getter:latest" --filter "ancestor=transcribe-many:latest")
 

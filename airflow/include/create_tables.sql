@@ -1,7 +1,7 @@
-CREATE TABLE IF NOT EXISTS netanyahu_minus_gaza_text_from_audio (
+CREATE TABLE IF NOT EXISTS text_from_audio (
     video_id TEXT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
-    uploader VARCHAR(128) NOT NULL,
+    uploader VARCHAR(128),
     "description" TEXT NOT NULL,
     view_count INTEGER NOT NULL,
     upload_date DATE NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS netanyahu_minus_gaza_text_from_audio (
 
 );
 
-CREATE TABLE IF NOT EXISTS netanyahu_minus_gaza_comments_table (
+CREATE TABLE IF NOT EXISTS comments_table (
     id SERIAL PRIMARY KEY,
     video_id TEXT NOT NULL,
     inserted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

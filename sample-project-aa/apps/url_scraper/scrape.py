@@ -98,7 +98,7 @@ debug_videos = [
     "vdbqPsRSSzFY",
     "v6jI_kBxLp2A",
     "vZ2hDyzQK1FU",
-][:20]
+][:4]
 
 
 def scrape():
