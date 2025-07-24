@@ -10,7 +10,7 @@ This project is an end-to-end data pipeline built with **Apache Airflow**, desig
 - **Playwright**: For extracting and deduplicating YouTube comments.
 - **yt-dlp**: For downloading audio and video metadata.
 - **Whisper**: For transcribing audio to text.
-- **text2emotion**: Applied to comments as a UDF inside Spark.
+- **Hugging Face**: Applied to comments to turn them into sentiment. Used as a UDF inside Spark.
 - **sumy**: Applied to transcribed audio for summarization via Spark UDF.
 - Every major step is implemented as a **DockerOperator** task within Airflow.
 
@@ -25,6 +25,7 @@ This project is an end-to-end data pipeline built with **Apache Airflow**, desig
 - **Playwright**
 - **yt-dlp**
 - **Whisper**
+- **Hugging Face**
 - **PostgreSQL**
 - **Discord Webhook Notifications**
 
@@ -75,7 +76,7 @@ Parallelized video chunk handling, comment + audio scraping, leading to Spark jo
 
 5. **Sentiment and Summary Analysis**
     - Spark UDFs:
-        - `text2emotion` for comment sentiment
+        - `huggingface` for comment sentiment
         - `sumy` for summarizing audio transcriptions
 
 6. **Finalization**
