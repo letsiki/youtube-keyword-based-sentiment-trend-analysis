@@ -45,7 +45,7 @@ def create_tables_if_not_exist():
         with conn.cursor() as cursor:
             cursor.execute(sql)
     existing_texts = hook.get_first(
-        "SELECT array_agg(video_id) FROM netanyahu_plus_gaza_text_from_audio;"
+        "SELECT array_agg(video_id) FROM netanyahu_minus_gaza_text_from_audio;"
     )
     if None not in existing_texts:
         return ["v" + ex for ex in existing_texts[0]]
