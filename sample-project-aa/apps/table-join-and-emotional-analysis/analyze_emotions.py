@@ -66,7 +66,8 @@ def analyze_emotion(comment):
         return dominant["label"]
 
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        # return json.dumps({"error": str(e)})
+        return None
 
 
 emotion_udf = udf(analyze_emotion, StringType())
@@ -147,8 +148,8 @@ comments_df = comments_df.withColumn(
     "published_at_absolute",
     parse_relative_date_udf(col("published_at"), col("inserted_at")),
 )
-# Join the two tables
-joined_df = text_df.join(comments_df, on="video_id")
+# Join the two tables, left_outer because not all videos allow-have comments
+joined_df = text_df.join(comments_df, on="video_id", how="left_outer")
 
 # Apply UDFs
 final_df = (

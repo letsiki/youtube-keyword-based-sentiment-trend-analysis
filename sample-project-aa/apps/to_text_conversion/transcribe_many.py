@@ -73,12 +73,19 @@ while True:
             continue
 
         print(f"Επεξεργασία: {audio_path}")
-        result = model.transcribe(
-            str(audio_path),
-            language=args.lang,
-            task="transcribe",
-            fp16=False,  # "translate" if translate_to_english else "transcribe",
-        )
+        try:
+            result = model.transcribe(
+                str(audio_path),
+                language=args.lang,
+                task="transcribe",
+                fp16=False,  # "translate" if translate_to_english else "transcribe",
+            )
+        except Exception as e:
+            print(
+                f"⚠️ Παράλειψη αρχείου λόγω σφάλματος αποκωδικοποίησης: {audio_path} - {e}"
+            )
+            processed.add(video_id)
+            continue
 
         # Δημιουργία output filename
         base_name = os.path.splitext(os.path.basename(audio_path))[0]
