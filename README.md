@@ -1,6 +1,8 @@
 # YouTube Keyword-Based Sentiment Trend Analysis
 
-This project is an end-to-end data pipeline built with **Apache Airflow**, designed to scrape YouTube video and comment data based on keywords, convert audio to text using Whisper, and analyze sentiment trends using Spark. The pipeline is fully containerized with Docker and designed to be run locally or adapted for cloud deployment.
+This project is an end-to-end data pipeline built with **Apache Airflow**, designed to scrape YouTube video and comment data based on keywords, convert audio to text using Whisper, and analyze sentiment trends using Spark. The pipeline is fully containerized with Docker and designed to be run locally or adapted for cloud deployment.  
+
+[Watch presentation video](https://www.youtube.com/watch?v=6U1ewsSfxGw&list=PLJT4CAvB3VkqG7dLVilIN5T_H-SjTcAJ6&index=33)  
 
 ---
 
